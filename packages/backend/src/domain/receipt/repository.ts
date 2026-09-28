@@ -102,11 +102,17 @@ export class ReceiptRepository {
   async findGoodsReceiptById(id: string): Promise<GoodsReceiptRecord | null> {
     const rows = await this.db`
       SELECT 
-        id, gr_number AS "grNumber", po_id AS "poId", receipt_type AS "receiptType",
-        delivery_note_number AS "deliveryNoteNumber", received_date::text AS "receivedDate",
-        received_by AS "receivedBy", notes, created_at::text AS "createdAt"
-      FROM goods_receipt
-      WHERE id = ${id}
+        gr.id, gr.gr_number AS "grNumber", gr.po_id AS "poId",
+        po.po_number AS "poNumber", v.name AS "vendorName",
+        gr.receipt_type AS "receiptType",
+        gr.delivery_note_number AS "deliveryNoteNumber", gr.received_date::text AS "receivedDate",
+        gr.received_by AS "receivedBy", u.full_name AS "receivedByName",
+        gr.notes, gr.created_at::text AS "createdAt"
+      FROM goods_receipt gr
+      LEFT JOIN purchase_order po ON po.id = gr.po_id
+      LEFT JOIN vendor v ON v.id = po.vendor_id
+      LEFT JOIN app_user u ON u.id = gr.received_by
+      WHERE gr.id = ${id}
     `;
 
     return rows.length > 0 ? (rows[0] as unknown as GoodsReceiptRecord) : null;
@@ -115,12 +121,15 @@ export class ReceiptRepository {
   async findGoodsReceiptItems(grId: string): Promise<GoodsReceiptItemRecord[]> {
     const rows = await this.db`
       SELECT 
-        id, gr_id AS "grId", po_item_id AS "poItemId",
-        quantity_received::float AS "quantityReceived",
-        quantity_rejected::float AS "quantityRejected",
-        condition_notes AS "conditionNotes"
-      FROM goods_receipt_item
-      WHERE gr_id = ${grId}
+        gri.id, gri.gr_id AS "grId", gri.po_item_id AS "poItemId",
+        poi.item_name AS "itemName", poi.uom,
+        poi.quantity_ordered::float AS "quantityOrdered",
+        gri.quantity_received::float AS "quantityReceived",
+        gri.quantity_rejected::float AS "quantityRejected",
+        gri.condition_notes AS "conditionNotes"
+      FROM goods_receipt_item gri
+      LEFT JOIN purchase_order_item poi ON poi.id = gri.po_item_id
+      WHERE gri.gr_id = ${grId}
     `;
 
     return rows as unknown as GoodsReceiptItemRecord[];
@@ -153,18 +162,24 @@ export class ReceiptRepository {
 
     let query = sql`
       SELECT 
-        id, gr_number AS "grNumber", po_id AS "poId", receipt_type AS "receiptType",
-        delivery_note_number AS "deliveryNoteNumber", received_date::text AS "receivedDate",
-        received_by AS "receivedBy", notes, created_at::text AS "createdAt"
-      FROM goods_receipt
+        gr.id, gr.gr_number AS "grNumber", gr.po_id AS "poId",
+        po.po_number AS "poNumber", v.name AS "vendorName",
+        gr.receipt_type AS "receiptType",
+        gr.delivery_note_number AS "deliveryNoteNumber", gr.received_date::text AS "receivedDate",
+        gr.received_by AS "receivedBy", u.full_name AS "receivedByName",
+        gr.notes, gr.created_at::text AS "createdAt"
+      FROM goods_receipt gr
+      LEFT JOIN purchase_order po ON po.id = gr.po_id
+      LEFT JOIN vendor v ON v.id = po.vendor_id
+      LEFT JOIN app_user u ON u.id = gr.received_by
       WHERE 1=1
     `;
 
     if (filters?.poId) {
-      query = sql`${query} AND po_id = ${filters.poId}`;
+      query = sql`${query} AND gr.po_id = ${filters.poId}`;
     }
 
-    query = sql`${query} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+    query = sql`${query} ORDER BY gr.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
     const rows = await query;
     return rows as unknown as GoodsReceiptRecord[];
   }

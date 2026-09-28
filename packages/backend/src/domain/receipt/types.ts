@@ -6,10 +6,13 @@ export interface GoodsReceiptRecord {
   id: string;
   grNumber: string;
   poId: string;
+  poNumber?: string | null;
+  vendorName?: string | null;
   receiptType: ReceiptType;
   deliveryNoteNumber?: string | null;
   receivedDate: string;
   receivedBy: string;
+  receivedByName?: string | null;
   notes?: string | null;
   createdAt: string;
 }
@@ -18,6 +21,9 @@ export interface GoodsReceiptItemRecord {
   id: string;
   grId: string;
   poItemId: string;
+  itemName?: string | null;
+  uom?: string | null;
+  quantityOrdered?: number | null;
   quantityReceived: number;
   quantityRejected: number;
   conditionNotes?: string | null;

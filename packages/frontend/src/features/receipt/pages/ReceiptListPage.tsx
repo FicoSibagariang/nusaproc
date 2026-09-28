@@ -1,45 +1,104 @@
-import React from 'react';
-import { Table, Button, Tag, Card, Typography, theme } from 'antd';
-import { PlusOutlined, FileDoneOutlined } from '@ant-design/icons';
+import React, { useState } from 'react';
+import { Table, Button, Tag, Card, Typography, theme, Tooltip, Space } from 'antd';
+import { PlusOutlined, FileDoneOutlined, EyeOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { receiptApi } from '../../../api/endpoints/receipt';
 import { PageHeader } from '../../../components/common/PageHeader';
 import { formatDate } from '../../../utils/date';
+import { BastDetailModal } from '../components/BastDetailModal';
 
 const { Text } = Typography;
+
+export interface ReceiptRow {
+  id: string;
+  grNumber: string;
+  poId: string;
+  poNumber?: string | null;
+  vendorName?: string | null;
+  receiptType: 'DIRECT_REQUESTER' | 'WAREHOUSE';
+  deliveryNoteNumber?: string | null;
+  receivedDate: string;
+  receivedBy: string;
+  receivedByName?: string | null;
+  notes?: string | null;
+  createdAt: string;
+}
 
 export const ReceiptListPage: React.FC = () => {
   const { token } = theme.useToken();
   const navigate = useNavigate();
+
+  const [selectedGrId, setSelectedGrId] = useState<string | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['receipts'],
     queryFn: () => receiptApi.list(),
   });
 
-  const receipts = data?.data || [];
+  const receipts: ReceiptRow[] = data?.data || [];
 
   const columns = [
     {
       title: 'Nomor BAST / GR',
       dataIndex: 'grNumber',
       key: 'grNumber',
-      render: (text: string) => (
-        <SpaceText text={text} />
+      render: (text: string, record: ReceiptRow) => (
+        <Tooltip title="Klik untuk melihat rincian barang diterima & status NCR">
+          <Button
+            type="link"
+            style={{
+              padding: 0,
+              fontWeight: 600,
+              height: 'auto',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              color: token.colorPrimary,
+            }}
+            onClick={() => {
+              setSelectedGrId(record.id);
+              setDetailModalOpen(true);
+            }}
+          >
+            <FileDoneOutlined style={{ color: token.colorPrimary }} />
+            <span>{text}</span>
+          </Button>
+        </Tooltip>
+      ),
+    },
+    {
+      title: 'PO & Vendor',
+      key: 'poAndVendor',
+      render: (_: unknown, record: ReceiptRow) => (
+        <Space direction="vertical" size={0}>
+          {record.poNumber ? (
+            <Text strong style={{ color: token.colorPrimary }}>{record.poNumber}</Text>
+          ) : (
+            <Text type="secondary">-</Text>
+          )}
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {record.vendorName || '-'}
+          </Text>
+        </Space>
       ),
     },
     {
       title: 'Nomor Surat Jalan',
       dataIndex: 'deliveryNoteNumber',
       key: 'deliveryNoteNumber',
-      render: (sj: string) => <Tag color="blue">{sj || '-'}</Tag>,
+      render: (sj?: string | null) => <Tag color="blue">{sj || '-'}</Tag>,
     },
     {
       title: 'Tipe Penerimaan',
       dataIndex: 'receiptType',
       key: 'receiptType',
-      render: (type: string) => <Tag color="geekblue">{type}</Tag>,
+      render: (type: string) => (
+        <Tag color={type === 'WAREHOUSE' ? 'geekblue' : 'purple'}>
+          {type === 'WAREHOUSE' ? 'Gudang' : 'Direct'}
+        </Tag>
+      ),
     },
     {
       title: 'Tanggal Penerimaan',
@@ -52,6 +111,25 @@ export const ReceiptListPage: React.FC = () => {
       dataIndex: 'notes',
       key: 'notes',
       ellipsis: true,
+      render: (notes?: string | null) => notes || <Text type="secondary">-</Text>,
+    },
+    {
+      title: 'Aksi',
+      key: 'action',
+      width: 100,
+      align: 'center' as const,
+      render: (_: unknown, record: ReceiptRow) => (
+        <Button
+          size="small"
+          icon={<EyeOutlined />}
+          onClick={() => {
+            setSelectedGrId(record.id);
+            setDetailModalOpen(true);
+          }}
+        >
+          Detail
+        </Button>
+      ),
     },
   ];
 
@@ -78,23 +156,20 @@ export const ReceiptListPage: React.FC = () => {
           dataSource={receipts}
           rowKey="id"
           loading={isLoading}
-          scroll={{ x: 750 }}
+          scroll={{ x: 800 }}
           pagination={{ pageSize: 10 }}
         />
       </Card>
-    </div>
-  );
-};
 
-const SpaceText: React.FC<{ text: string }> = ({ text }) => {
-  const { token } = theme.useToken();
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-      <FileDoneOutlined style={{ color: token.colorPrimary }} />
-      <Text strong style={{ color: token.colorPrimary }}>
-        {text}
-      </Text>
-    </span>
+      <BastDetailModal
+        open={detailModalOpen}
+        grId={selectedGrId}
+        onClose={() => {
+          setDetailModalOpen(false);
+          setSelectedGrId(null);
+        }}
+      />
+    </div>
   );
 };
 
