@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Table, Button, Tag, Space, Card, Typography, Modal, Input, App, theme, Tooltip, type TableProps } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlined, ShoppingCartOutlined, UserOutlined, ApartmentOutlined, FileTextOutlined } from '@ant-design/icons';
+import { PlusOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlined, ShoppingCartOutlined, UserOutlined, ApartmentOutlined, FileTextOutlined, EyeOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { prApi } from '../../../api/endpoints/pr';
@@ -11,6 +11,7 @@ import { formatDate } from '../../../utils/date';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { PageHeader } from '../../../components/common/PageHeader';
 import { StatusTag } from '../../../components/common/StatusTag';
+import { PrDetailModal } from '../components/PrDetailModal';
 
 const { Text } = Typography;
 
@@ -65,6 +66,8 @@ export const PrListPage: React.FC = () => {
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [selectedPrId, setSelectedPrId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [selectedDetailPrId, setSelectedDetailPrId] = useState<string | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['purchase-requests'],
@@ -130,7 +133,29 @@ export const PrListPage: React.FC = () => {
       title: 'Nomor PR',
       dataIndex: 'prNumber',
       key: 'prNumber',
-      render: (text: string) => <Text strong style={{ color: token.colorPrimary }}>{text}</Text>,
+      render: (text: string, record: PurchaseRequestRow) => (
+        <Tooltip title="Klik untuk melihat rincian lengkap dokumen PR">
+          <Button
+            type="link"
+            style={{
+              padding: 0,
+              fontWeight: 600,
+              height: 'auto',
+              color: token.colorPrimary,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+            onClick={() => {
+              setSelectedDetailPrId(record.id);
+              setDetailModalOpen(true);
+            }}
+          >
+            <FileTextOutlined />
+            <span>{text}</span>
+          </Button>
+        </Tooltip>
+      ),
     },
     {
       title: 'Tgl Pengajuan',
@@ -260,6 +285,16 @@ export const PrListPage: React.FC = () => {
 
         return (
           <Space size="small">
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => {
+                setSelectedDetailPrId(record.id);
+                setDetailModalOpen(true);
+              }}
+            >
+              Detail
+            </Button>
             {record.status === 'DRAFT' && (
               <Button
                 type="primary"
@@ -380,6 +415,17 @@ export const PrListPage: React.FC = () => {
           style={{ marginTop: 12 }}
         />
       </Modal>
+      <PrDetailModal
+        open={detailModalOpen}
+        prId={selectedDetailPrId}
+        onClose={() => {
+          setDetailModalOpen(false);
+          setSelectedDetailPrId(null);
+        }}
+        onStatusUpdated={() => {
+          queryClient.invalidateQueries({ queryKey: ['purchase-requests'] });
+        }}
+      />
     </div>
   );
 };

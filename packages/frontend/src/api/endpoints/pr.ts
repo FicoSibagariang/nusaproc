@@ -26,11 +26,72 @@ export interface DecidePrPayload {
   approverDivisionId?: string;
 }
 
+export interface PrItemDetail {
+  id: string;
+  prId: string;
+  lineNumber: number;
+  itemName: string;
+  specification?: string | null;
+  quantityRequested: number;
+  quantityOrdered: number;
+  uom: string;
+  estimatedUnitPrice: number;
+  subtotal: number;
+}
+
+export interface PrApprovalInstance {
+  id: string;
+  prId: string;
+  stepOrder: number;
+  assignedRole: string;
+  assignedUserId?: string | null;
+  requiredMinAmount: number;
+  decision: 'PENDING' | 'APPROVED' | 'REJECTED';
+  decisionBy?: string | null;
+  decisionAt?: string | null;
+  rejectionReason?: string | null;
+  delegatedFromUserId?: string | null;
+}
+
+export interface PrDetailData {
+  id: string;
+  prNumber: string;
+  requesterId: string;
+  requesterName?: string | null;
+  requesterEmail?: string | null;
+  costCenter: string;
+  divisionId: string;
+  divisionName?: string | null;
+  branchId: string;
+  branchName?: string | null;
+  requiredDate: string;
+  paymentTermType: 'ADVANCE_OR_COD' | 'PAY_AFTER_RECEIPT';
+  isEmergency: boolean;
+  emergencyJustification?: string | null;
+  businessJustification: string;
+  status: string;
+  totalEstimatedAmount: number;
+  remainingQuantity?: number;
+  poCount?: number;
+  relatedPos?: Array<{
+    id: string;
+    poNumber: string;
+    status: string;
+    vendorName?: string | null;
+    grandTotalAmount?: number;
+    createdAt?: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+  items: PrItemDetail[];
+  approvalInstances: PrApprovalInstance[];
+}
+
 export const prApi = {
   list: (params?: { requesterId?: string; status?: string; hasRemainingPo?: boolean; limit?: number; offset?: number }) =>
     apiClient.get('/purchase-requests', { params }).then((res) => res.data),
 
-  getById: (id: string) =>
+  getById: (id: string): Promise<{ success: boolean; data: PrDetailData }> =>
     apiClient.get(`/purchase-requests/${id}`).then((res) => res.data),
 
   create: (data: CreatePrPayload) =>
