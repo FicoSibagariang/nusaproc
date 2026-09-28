@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Table, Button, Space, Card, Typography, App, theme, Modal, Form, Select, Input, Alert, Tooltip } from 'antd';
-import { FilePdfOutlined, CheckOutlined, SendOutlined, FileTextOutlined, PlusOutlined, EditOutlined, BankOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { FilePdfOutlined, CheckOutlined, SendOutlined, FileTextOutlined, PlusOutlined, EditOutlined, BankOutlined, InfoCircleOutlined, InboxOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { poApi, type UpdatePoPayload } from '../../../api/endpoints/po';
@@ -266,6 +266,16 @@ export const PoListPage: React.FC = () => {
               onClick={() => issueMutation.mutate(record.id)}
             >
               Terbitkan (R24)
+            </Button>
+          )}
+          {(record.status === 'ISSUED' || record.status === 'AMENDED') && (
+            <Button
+              type="primary"
+              size="small"
+              icon={<InboxOutlined />}
+              onClick={() => navigate(`/receipts/create?poId=${record.id}`)}
+            >
+              Terima Barang (BAST)
             </Button>
           )}
           <Button

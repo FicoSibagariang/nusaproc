@@ -24,7 +24,7 @@ import {
   ArrowLeftOutlined,
   FileDoneOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { poApi } from '../../../api/endpoints/po';
 import { receiptApi, type CreateReceiptPayload } from '../../../api/endpoints/receipt';
@@ -57,6 +57,8 @@ export const BastCreateForm: React.FC = () => {
   const { message } = App.useApp();
   const { token } = theme.useToken();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const queryPoId = searchParams.get('poId');
   const [form] = Form.useForm();
   const [poList, setPoList] = useState<PoOptionItem[]>([]);
   const [selectedPoId, setSelectedPoId] = useState<string>('');
@@ -67,19 +69,34 @@ export const BastCreateForm: React.FC = () => {
   useEffect(() => {
     poApi
       .list()
-      .then((res) => {
+      .then(async (res) => {
         const list = res.data || [];
         // Hanya PO berstatus ISSUED atau AMENDED yang dapat dibuatkan BAST (Draft, Completed, Cancelled disaring)
-        const receivablePos = Array.isArray(list)
+        let receivablePos = Array.isArray(list)
           ? list.filter((p: any) => p.status === 'ISSUED' || p.status === 'AMENDED')
           : [];
 
+        // Jika ada query parameter poId tapi belum masuk dalam daftar list yang ter-fetch
+        if (queryPoId && !receivablePos.some((p: any) => p.id === queryPoId)) {
+          try {
+            const singlePoRes = await poApi.getById(queryPoId);
+            const singlePo = singlePoRes?.data;
+            if (singlePo && (singlePo.status === 'ISSUED' || singlePo.status === 'AMENDED')) {
+              receivablePos = [singlePo, ...receivablePos];
+            }
+          } catch {
+            // Abaikan jika tidak ditemukan
+          }
+        }
+
         if (receivablePos.length > 0) {
           setPoList(receivablePos);
-          const firstPo = receivablePos[0];
-          setSelectedPoId(firstPo.id);
-          form.setFieldValue('poId', firstPo.id);
-          loadPoDetails(firstPo.id);
+          // Prioritaskan PO yang diminta dari query param ?poId=... jika valid
+          const targetPo =
+            (queryPoId && receivablePos.find((p: any) => p.id === queryPoId)) || receivablePos[0];
+          setSelectedPoId(targetPo.id);
+          form.setFieldValue('poId', targetPo.id);
+          loadPoDetails(targetPo.id);
         } else {
           setPoList([]);
           setSelectedPoId('');
@@ -93,7 +110,7 @@ export const BastCreateForm: React.FC = () => {
         form.setFieldValue('poId', undefined);
         setPoItems([]);
       });
-  }, []);
+  }, [queryPoId]);
 
   const loadPoDetails = async (poId: string) => {
     if (!poId) {
