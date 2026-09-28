@@ -3,8 +3,9 @@ import { receiptApi } from '../../src/api';
 import { routes } from '../../src/routes';
 
 describe('US5 / R30: Dedicated Non-Conformance Report (NCR) Frontend Integration', () => {
-  it('defines listNcrs endpoint method in receiptApi', () => {
+  it('defines listNcrs and resolveNcr endpoint methods in receiptApi', () => {
     expect(typeof receiptApi.listNcrs).toBe('function');
+    expect(typeof receiptApi.resolveNcr).toBe('function');
   });
 
   it('maps /ncr route to dedicated NcrListPage component in router configuration', () => {

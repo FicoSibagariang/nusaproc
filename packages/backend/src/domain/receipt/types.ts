@@ -34,11 +34,14 @@ export interface NonConformanceReportRecord {
   id: string;
   ncrNumber: string;
   grId: string;
+  grNumber?: string | null;
   poId: string;
+  poNumber?: string | null;
   description: string;
   actionRequired: string;
   isResolved: boolean;
   resolvedBy?: string | null;
+  resolvedByName?: string | null;
   resolvedAt?: string | null;
   createdAt: string;
 }

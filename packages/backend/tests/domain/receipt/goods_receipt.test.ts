@@ -384,6 +384,34 @@ describe('Epic 6: Goods Receipt (BAST), Simultaneous Invoice Upload & SoD (R28â€
       const getData = await getRes.json();
       expect(getData.data.id).toBe(data.data.id);
     });
+
+    it('resolves NCR ticket via PATCH /ncrs/:id/resolve', async () => {
+      const app = createReceiptApp();
+      // Find open NCR
+      const listRes = await app.request('/ncrs?isResolved=false');
+      const listData = await listRes.json();
+      expect(listData.success).toBe(true);
+      expect(listData.data.length).toBeGreaterThan(0);
+      const targetNcr = listData.data[0];
+
+      // Resolve NCR
+      const resolveRes = await app.request(`/ncrs/${targetNcr.id}/resolve`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': warehouseUserId,
+        },
+        body: JSON.stringify({
+          resolutionNotes: 'Unit pengganti telah diterima dengan baik',
+        }),
+      });
+
+      expect(resolveRes.status).toBe(200);
+      const resolveData = await resolveRes.json();
+      expect(resolveData.success).toBe(true);
+      expect(resolveData.data.isResolved).toBe(true);
+      expect(resolveData.data.actionRequired).toContain('Unit pengganti');
+    });
   });
 
   describe('6. Goods Receipt Serial Numbers Tracking', () => {

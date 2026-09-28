@@ -198,3 +198,8 @@ export async function listNcrs(filters?: { poId?: string; isResolved?: boolean }
   const repo = new ReceiptRepository();
   return await repo.listNcrs(filters);
 }
+
+export async function resolveNcr(ncrId: string, resolvedBy: string, resolutionNotes?: string): Promise<NonConformanceReportRecord> {
+  const repo = new ReceiptRepository();
+  return await repo.resolveNcr(ncrId, resolvedBy, resolutionNotes);
+}

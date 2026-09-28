@@ -4,6 +4,7 @@ import {
   getGoodsReceiptById,
   listGoodsReceipts,
   listNcrs,
+  resolveNcr,
 } from './service';
 import { formatProblemDetails } from '../sod/errors';
 
@@ -59,6 +60,21 @@ export function createReceiptApp(): Hono {
     try {
       const ncrs = await listNcrs({ poId, isResolved });
       return c.json({ success: true, data: ncrs });
+    } catch (err: unknown) {
+      return c.json(formatProblemDetails(err, c.req.path), 400);
+    }
+  });
+
+  // 5. Resolve Non-Conformance Report (NCR)
+  app.patch('/ncrs/:id/resolve', async (c) => {
+    const id = c.req.param('id');
+    const userId = c.req.header('X-User-Id') || '00000000-0000-0000-0000-000000000000';
+    try {
+      const body = await c.req.json().catch(() => ({}));
+      const resolutionNotes = body.resolutionNotes;
+      const resolvedBy = body.resolvedBy || userId;
+      const updated = await resolveNcr(id, resolvedBy, resolutionNotes);
+      return c.json({ success: true, data: updated });
     } catch (err: unknown) {
       return c.json(formatProblemDetails(err, c.req.path), 400);
     }

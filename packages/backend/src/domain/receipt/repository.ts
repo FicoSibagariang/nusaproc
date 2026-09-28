@@ -210,23 +210,63 @@ export class ReceiptRepository {
     const limit = filters?.limit || 50;
     let query = sql`
       SELECT 
-        id, ncr_number AS "ncrNumber", gr_id AS "grId", po_id AS "poId",
-        description, action_required AS "actionRequired", is_resolved AS "isResolved",
-        resolved_by AS "resolvedBy", resolved_at::text AS "resolvedAt",
-        created_at::text AS "createdAt"
-      FROM non_conformance_report
+        ncr.id, 
+        ncr.ncr_number AS "ncrNumber", 
+        ncr.gr_id AS "grId", 
+        gr.gr_number AS "grNumber",
+        ncr.po_id AS "poId",
+        po.po_number AS "poNumber",
+        ncr.description, 
+        ncr.action_required AS "actionRequired", 
+        ncr.is_resolved AS "isResolved",
+        ncr.resolved_by AS "resolvedBy", 
+        u.full_name AS "resolvedByName",
+        ncr.resolved_at::text AS "resolvedAt",
+        ncr.created_at::text AS "createdAt"
+      FROM non_conformance_report ncr
+      LEFT JOIN goods_receipt gr ON gr.id = ncr.gr_id
+      LEFT JOIN purchase_order po ON po.id = ncr.po_id
+      LEFT JOIN app_user u ON u.id = ncr.resolved_by
       WHERE 1=1
     `;
 
     if (filters?.poId) {
-      query = sql`${query} AND po_id = ${filters.poId}`;
+      query = sql`${query} AND ncr.po_id = ${filters.poId}`;
     }
     if (filters?.isResolved !== undefined) {
-      query = sql`${query} AND is_resolved = ${filters.isResolved}`;
+      query = sql`${query} AND ncr.is_resolved = ${filters.isResolved}`;
     }
 
-    query = sql`${query} ORDER BY created_at DESC LIMIT ${limit}`;
+    query = sql`${query} ORDER BY ncr.created_at DESC LIMIT ${limit}`;
     const rows = await query;
     return rows as unknown as NonConformanceReportRecord[];
+  }
+
+  async resolveNcr(ncrId: string, resolvedBy: string, resolutionNotes?: string): Promise<NonConformanceReportRecord> {
+    const resolvedNotesText = resolutionNotes?.trim() ? ` [Resolusi: ${resolutionNotes.trim()}]` : '';
+    const rows = await sql`
+      UPDATE non_conformance_report
+      SET 
+        is_resolved = TRUE,
+        resolved_by = ${resolvedBy},
+        resolved_at = clock_timestamp(),
+        action_required = CASE 
+          WHEN ${resolvedNotesText} != ''
+          THEN action_required || ${resolvedNotesText}
+          ELSE action_required
+        END
+      WHERE id = ${ncrId}
+      RETURNING 
+        id, ncr_number AS "ncrNumber", gr_id AS "grId", po_id AS "poId",
+        description, action_required AS "actionRequired", is_resolved AS "isResolved",
+        resolved_by AS "resolvedBy", resolved_at::text AS "resolvedAt",
+        created_at::text AS "createdAt"
+    `;
+
+    if (rows.length === 0) {
+      throw new Error(`Tiket NCR dengan ID '${ncrId}' tidak ditemukan.`);
+    }
+
+    return rows[0] as unknown as NonConformanceReportRecord;
   }
 }

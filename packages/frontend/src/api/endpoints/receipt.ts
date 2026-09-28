@@ -32,11 +32,14 @@ export interface ReceiptNcrData {
   id: string;
   ncrNumber: string;
   grId: string;
+  grNumber?: string | null;
   poId: string;
+  poNumber?: string | null;
   description: string;
   actionRequired: string;
   isResolved: boolean;
   resolvedBy?: string | null;
+  resolvedByName?: string | null;
   resolvedAt?: string | null;
   createdAt: string;
 }
@@ -71,4 +74,7 @@ export const receiptApi = {
 
   listNcrs: (params?: { poId?: string; isResolved?: boolean }) =>
     apiClient.get('/ncrs', { params }).then((res) => res.data),
+
+  resolveNcr: (ncrId: string, data?: { resolutionNotes?: string; resolvedBy?: string }) =>
+    apiClient.patch(`/ncrs/${ncrId}/resolve`, data).then((res) => res.data),
 };
