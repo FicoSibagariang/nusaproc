@@ -45,12 +45,14 @@ interface PoItemRow {
   id: string;
   itemName: string;
   quantityOrdered: number;
+  quantityAlreadyReceived: number;
+  remainingQuantity: number;
   uom: string;
 }
 
 const DEFAULT_PO_ITEMS: PoItemRow[] = [
-  { id: '51000000-0000-0000-0000-000000000001', itemName: 'Core Edge Router 10G', quantityOrdered: 10, uom: 'Unit' },
-  { id: '51000000-0000-0000-0000-000000000002', itemName: 'SFP+ 10G Optical Transceiver', quantityOrdered: 20, uom: 'Pcs' },
+  { id: '51000000-0000-0000-0000-000000000001', itemName: 'Core Edge Router 10G', quantityOrdered: 10, quantityAlreadyReceived: 0, remainingQuantity: 10, uom: 'Unit' },
+  { id: '51000000-0000-0000-0000-000000000002', itemName: 'SFP+ 10G Optical Transceiver', quantityOrdered: 20, quantityAlreadyReceived: 0, remainingQuantity: 20, uom: 'Pcs' },
 ];
 
 export const BastCreateForm: React.FC = () => {
@@ -121,14 +123,28 @@ export const BastCreateForm: React.FC = () => {
     try {
       const res = await poApi.getById(poId);
       if (res.data?.items && res.data.items.length > 0) {
-        setPoItems(
-          res.data.items.map((item: any) => ({
+        const mappedItems: PoItemRow[] = res.data.items.map((item: any) => {
+          const qtyOrdered = Number(item.quantityOrdered) || 1;
+          const qtyReceivedSoFar = Number(item.quantityReceived) || 0;
+          const remaining = Math.max(0, qtyOrdered - qtyReceivedSoFar);
+          return {
             id: item.id || `item-${Math.random()}`,
             itemName: item.itemName,
-            quantityOrdered: Number(item.quantityOrdered) || 1,
+            quantityOrdered: qtyOrdered,
+            quantityAlreadyReceived: qtyReceivedSoFar,
+            remainingQuantity: remaining,
             uom: item.uom || 'Unit',
-          }))
-        );
+          };
+        });
+
+        setPoItems(mappedItems);
+
+        // Inisialisasi nilai formulir: default diterima baik = sisa pesanan, cacat = 0
+        mappedItems.forEach((item) => {
+          form.setFieldValue(['items', item.id, 'goodQty'], item.remainingQuantity);
+          form.setFieldValue(['items', item.id, 'rejectQty'], 0);
+          form.setFieldValue(['items', item.id, 'defectNotes'], '');
+        });
       } else {
         setPoItems([]);
       }
@@ -152,46 +168,139 @@ export const BastCreateForm: React.FC = () => {
       render: (text: string) => <strong>{text}</strong>,
     },
     {
-      title: 'Qty Dipesan',
-      dataIndex: 'quantityOrdered',
-      key: 'quantityOrdered',
-      width: 120,
+      title: 'Pesanan PO',
+      key: 'orderSummary',
+      width: 140,
+      render: (_: unknown, record: PoItemRow) => (
+        <Space direction="vertical" size={0}>
+          <Text strong>{record.quantityOrdered} {record.uom}</Text>
+          {record.quantityAlreadyReceived > 0 && (
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              Diterima lalu: {record.quantityAlreadyReceived} {record.uom}
+            </Text>
+          )}
+          <Text type="secondary" style={{ fontSize: 11 }}>
+            Sisa pesan: {record.remainingQuantity} {record.uom}
+          </Text>
+        </Space>
+      ),
     },
     {
-      title: 'Satuan',
-      dataIndex: 'uom',
-      key: 'uom',
-      width: 100,
-    },
-    {
-      title: 'Qty Diterima Fisik (R29)',
-      key: 'receivedQty',
-      width: 180,
+      title: 'Qty Diterima Baik (Lolos QC)',
+      key: 'goodQty',
+      width: 170,
       render: (_: unknown, record: PoItemRow) => (
         <Form.Item
-          name={['items', record.id, 'receivedQty']}
-          initialValue={record.quantityOrdered}
-          rules={[{ required: true, message: 'Qty diterima wajib diisi' }]}
+          name={['items', record.id, 'goodQty']}
+          initialValue={record.remainingQuantity}
+          rules={[
+            { required: true, message: 'Qty diterima baik wajib diisi' },
+            ({ getFieldValue }) => ({
+              validator(_, value) {
+                const goodVal = Number(value ?? 0);
+                const rejectVal = Number(getFieldValue(['items', record.id, 'rejectQty']) ?? 0);
+                if (goodVal < 0) {
+                  return Promise.reject(new Error('Qty tidak boleh negatif'));
+                }
+                if (goodVal + rejectVal > record.remainingQuantity) {
+                  return Promise.reject(
+                    new Error(`Total Qty Baik (${goodVal}) + Cacat (${rejectVal}) > sisa (${record.remainingQuantity})`)
+                  );
+                }
+                return Promise.resolve();
+              },
+            }),
+          ]}
           style={{ margin: 0 }}
         >
-          <InputNumber min={0} max={record.quantityOrdered} style={{ width: '100%' }} />
+          <InputNumber
+            min={0}
+            max={record.remainingQuantity}
+            style={{ width: '100%' }}
+            addonAfter={record.uom}
+          />
         </Form.Item>
       ),
     },
     {
-      title: 'Kondisi Fisik',
-      key: 'condition',
-      width: 180,
+      title: 'Qty Cacat / Ditolak (NCR R30)',
+      key: 'rejectQty',
+      width: 170,
       render: (_: unknown, record: PoItemRow) => (
         <Form.Item
-          name={['items', record.id, 'condition']}
-          initialValue="GOOD"
+          name={['items', record.id, 'rejectQty']}
+          initialValue={0}
+          rules={[
+            { required: true, message: 'Qty cacat wajib diisi (0 jika tidak ada)' },
+            ({ getFieldValue }) => ({
+              validator(_, value) {
+                const rejectVal = Number(value ?? 0);
+                const goodVal = Number(getFieldValue(['items', record.id, 'goodQty']) ?? 0);
+                if (rejectVal < 0) {
+                  return Promise.reject(new Error('Qty tidak boleh negatif'));
+                }
+                if (goodVal + rejectVal > record.remainingQuantity) {
+                  return Promise.reject(
+                    new Error(`Total Qty Baik (${goodVal}) + Cacat (${rejectVal}) > sisa (${record.remainingQuantity})`)
+                  );
+                }
+                if (goodVal === 0 && rejectVal === 0) {
+                  return Promise.reject(new Error('Minimal salah satu Qty harus > 0'));
+                }
+                return Promise.resolve();
+              },
+            }),
+          ]}
           style={{ margin: 0 }}
         >
-          <Radio.Group size="small">
-            <Radio.Button value="GOOD">Bagus / Sesuai</Radio.Button>
-            <Radio.Button value="DEFECT">Cacat / Rusak</Radio.Button>
-          </Radio.Group>
+          <InputNumber
+            min={0}
+            max={record.remainingQuantity}
+            style={{ width: '100%' }}
+            addonAfter={record.uom}
+          />
+        </Form.Item>
+      ),
+    },
+    {
+      title: 'Keterangan Cacat / Alasan Ditolak (NCR R30)',
+      key: 'defectNotes',
+      width: 250,
+      render: (_: unknown, record: PoItemRow) => (
+        <Form.Item
+          noStyle
+          shouldUpdate={(prevValues, currentValues) =>
+            prevValues.items?.[record.id]?.rejectQty !== currentValues.items?.[record.id]?.rejectQty
+          }
+        >
+          {({ getFieldValue }) => {
+            const rejectQty = Number(getFieldValue(['items', record.id, 'rejectQty']) || 0);
+            const isDefect = rejectQty > 0;
+            return (
+              <Form.Item
+                name={['items', record.id, 'defectNotes']}
+                rules={[
+                  {
+                    required: isDefect,
+                    message: 'Wajib mengisi rincian cacat untuk penerbitan laporan NCR!',
+                  },
+                ]}
+                style={{ margin: 0 }}
+              >
+                <Input.TextArea
+                  rows={2}
+                  placeholder={
+                    isDefect
+                      ? 'Wajib diisi: rincian kerusakan/cacat untuk penerbitan laporan NCR'
+                      : 'Opsional (hanya jika ada barang cacat)'
+                  }
+                  style={{
+                    borderColor: isDefect ? token.colorWarning : undefined,
+                  }}
+                />
+              </Form.Item>
+            );
+          }}
         </Form.Item>
       ),
     },
@@ -208,21 +317,32 @@ export const BastCreateForm: React.FC = () => {
         notes: values.notes,
         items: poItems.map((item) => {
           const itemVal = values.items?.[item.id] || {};
-          const receivedQty = Number(itemVal.receivedQty ?? item.quantityOrdered ?? 1);
-          const isDefect = itemVal.condition === 'DEFECT';
-          const rejectedQty = isDefect ? Math.max(1, Number(item.quantityOrdered) - receivedQty) : 0;
+          const goodQty = Number(itemVal.goodQty ?? item.remainingQuantity ?? 0);
+          const rejectQty = Number(itemVal.rejectQty ?? 0);
+          const defectNotes = itemVal.defectNotes?.trim() || undefined;
           return {
             poItemId: item.id,
-            quantityReceived: receivedQty,
-            quantityRejected: rejectedQty,
-            conditionNotes: isDefect ? 'Barang cacat/rusak saat serah terima fisik (NCR R30)' : undefined,
+            quantityReceived: goodQty,
+            quantityRejected: rejectQty,
+            conditionNotes:
+              defectNotes ||
+              (rejectQty > 0
+                ? `Terdapat ${rejectQty} ${item.uom} cacat/rusak saat serah terima fisik (NCR R30)`
+                : undefined),
           };
         }),
       };
 
       const res = await receiptApi.create(payload);
       const grNumber = res?.data?.grNumber || 'BAST';
-      message.success(`Berita Acara Serah Terima (${grNumber}) berhasil disimpan & diterbitkan (R29)!`);
+      const ncrCount = res?.data?.ncrRecords?.length || 0;
+      if (ncrCount > 0) {
+        message.warning(
+          `Berita Acara Serah Terima (${grNumber}) berhasil disimpan (R29). Sistem otomatis menerbitkan ${ncrCount} laporan ketidaksesuaian barang (NCR - R30) untuk unit yang cacat!`
+        );
+      } else {
+        message.success(`Berita Acara Serah Terima (${grNumber}) berhasil disimpan & diterbitkan (R29)!`);
+      }
       navigate('/receipts');
     } catch (err: any) {
       const errMsg = err?.response?.data?.detail || err?.response?.data?.title || err?.message || 'Gagal menyimpan BAST';
@@ -332,7 +452,14 @@ export const BastCreateForm: React.FC = () => {
           </Form.Item>
         </Card>
 
-        <Card title="Daftar Item Diterima Fisik (Pemeriksaan Qty & Kondisi)" style={{ marginBottom: 24 }}>
+        <Card title="Daftar Item Diterima Fisik (Pemeriksaan Qty Baik vs Cacat - R29 & R30)" style={{ marginBottom: 24 }}>
+          <Alert
+            type="info"
+            showIcon
+            message="Pemeriksaan Fisik Parsial & Penanganan Barang Cacat (NCR - R30)"
+            description="Jika terdapat barang yang rusak/cacat, masukkan kuantitasnya pada kolom 'Qty Cacat / Ditolak'. Sistem akan otomatis menerima unit yang baik ke inventaris dan menerbitkan dokumen Non-Conformance Report (NCR) resmi untuk unit yang cacat."
+            style={{ marginBottom: 16 }}
+          />
           <Table
             dataSource={poItems}
             columns={columns}
