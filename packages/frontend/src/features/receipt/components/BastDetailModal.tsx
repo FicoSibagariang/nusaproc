@@ -20,6 +20,7 @@ import {
   AlertOutlined,
   ShoppingCartOutlined,
   FileTextOutlined,
+  BarcodeOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -69,7 +70,25 @@ export const BastDetailModal: React.FC<BastDetailModalProps> = ({
       title: 'Nama Barang / Jasa',
       dataIndex: 'itemName',
       key: 'itemName',
-      render: (text: string | null | undefined) => <Text strong>{text || 'Item PO'}</Text>,
+      render: (text: string | null | undefined, record: ReceiptItemData) => (
+        <Space direction="vertical" size={2}>
+          <Text strong>{text || 'Item PO'}</Text>
+          {record.serialNumbers && record.serialNumbers.length > 0 && (
+            <div style={{ marginTop: 4 }}>
+              <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 2 }}>
+                <BarcodeOutlined /> Serial Number ({record.serialNumbers.length} unit):
+              </Text>
+              <Space size={[4, 4]} wrap>
+                {record.serialNumbers.map((sn, idx) => (
+                  <Tag key={idx} color="cyan" style={{ fontSize: 11, margin: 0 }}>
+                    {sn}
+                  </Tag>
+                ))}
+              </Space>
+            </div>
+          )}
+        </Space>
+      ),
     },
     {
       title: 'Qty Pesanan PO',

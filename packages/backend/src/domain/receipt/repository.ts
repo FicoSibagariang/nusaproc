@@ -43,6 +43,7 @@ export class ReceiptRepository {
     quantityReceived: number;
     quantityRejected: number;
     conditionNotes?: string | null;
+    serialNumbers?: string[];
   }>): Promise<GoodsReceiptItemRecord[]> {
     const results: GoodsReceiptItemRecord[] = [];
 
@@ -60,7 +61,23 @@ export class ReceiptRepository {
           quantity_rejected::float AS "quantityRejected",
           condition_notes AS "conditionNotes"
       `;
-      results.push(rows[0] as unknown as GoodsReceiptItemRecord);
+
+      if (item.serialNumbers && item.serialNumbers.length > 0) {
+        for (const sn of item.serialNumbers) {
+          const trimmed = sn.trim();
+          if (trimmed) {
+            await this.db`
+              INSERT INTO goods_receipt_serial_number (gr_item_id, serial_number)
+              VALUES (${item.id}, ${trimmed})
+            `;
+          }
+        }
+      }
+
+      results.push({
+        ...(rows[0] as unknown as GoodsReceiptItemRecord),
+        serialNumbers: item.serialNumbers || [],
+      });
     }
 
     return results;
@@ -126,7 +143,12 @@ export class ReceiptRepository {
         poi.quantity_ordered::float AS "quantityOrdered",
         gri.quantity_received::float AS "quantityReceived",
         gri.quantity_rejected::float AS "quantityRejected",
-        gri.condition_notes AS "conditionNotes"
+        gri.condition_notes AS "conditionNotes",
+        COALESCE((
+          SELECT json_agg(grsn.serial_number ORDER BY grsn.created_at ASC)
+          FROM goods_receipt_serial_number grsn
+          WHERE grsn.gr_item_id = gri.id
+        ), '[]'::json) AS "serialNumbers"
       FROM goods_receipt_item gri
       LEFT JOIN purchase_order_item poi ON poi.id = gri.po_item_id
       WHERE gri.gr_id = ${grId}

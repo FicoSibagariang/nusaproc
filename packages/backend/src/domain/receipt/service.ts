@@ -95,6 +95,7 @@ export async function recordGoodsReceipt(input: RecordGoodsReceiptInput): Promis
       quantityReceived: item.quantityReceived,
       quantityRejected: item.quantityRejected ?? 0,
       conditionNotes: item.conditionNotes,
+      serialNumbers: item.serialNumbers || [],
     }));
 
     const insertedItems = await receiptRepo.insertGoodsReceiptItems(itemsToInsert);

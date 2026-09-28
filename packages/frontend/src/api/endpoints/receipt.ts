@@ -11,6 +11,7 @@ export interface CreateReceiptPayload {
     quantityReceived: number;
     quantityRejected?: number;
     conditionNotes?: string;
+    serialNumbers?: string[];
   }>;
 }
 
@@ -24,6 +25,7 @@ export interface ReceiptItemData {
   quantityReceived: number;
   quantityRejected: number;
   conditionNotes?: string | null;
+  serialNumbers?: string[];
 }
 
 export interface ReceiptNcrData {

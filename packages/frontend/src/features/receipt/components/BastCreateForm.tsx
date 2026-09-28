@@ -17,12 +17,15 @@ import {
   Row,
   Col,
   Alert,
+  Modal,
+  Tag,
 } from 'antd';
 import {
   InboxOutlined,
   CheckCircleOutlined,
   ArrowLeftOutlined,
   FileDoneOutlined,
+  BarcodeOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -67,6 +70,10 @@ export const BastCreateForm: React.FC = () => {
   const [poItems, setPoItems] = useState<PoItemRow[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [loadingPo, setLoadingPo] = useState(false);
+  const [serialNumberMap, setSerialNumberMap] = useState<Record<string, string[]>>({});
+  const [snModalOpen, setSnModalOpen] = useState(false);
+  const [activeSnItem, setActiveSnItem] = useState<PoItemRow | null>(null);
+  const [snInputText, setSnInputText] = useState('');
 
   useEffect(() => {
     poApi
@@ -117,9 +124,11 @@ export const BastCreateForm: React.FC = () => {
   const loadPoDetails = async (poId: string) => {
     if (!poId) {
       setPoItems([]);
+      setSerialNumberMap({});
       return;
     }
     setLoadingPo(true);
+    setSerialNumberMap({});
     try {
       const res = await poApi.getById(poId);
       if (res.data?.items && res.data.items.length > 0) {
@@ -158,6 +167,30 @@ export const BastCreateForm: React.FC = () => {
   const handlePoChange = (poId: string) => {
     setSelectedPoId(poId);
     loadPoDetails(poId);
+  };
+
+  const openSnModal = (item: PoItemRow) => {
+    setActiveSnItem(item);
+    const currentSerials = serialNumberMap[item.id] || [];
+    setSnInputText(currentSerials.join('\n'));
+    setSnModalOpen(true);
+  };
+
+  const handleSaveSn = () => {
+    if (!activeSnItem) return;
+    const parsed = snInputText
+      .split(/[\n,;]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    const uniqueSerials = Array.from(new Set(parsed));
+
+    setSerialNumberMap((prev) => ({
+      ...prev,
+      [activeSnItem.id]: uniqueSerials,
+    }));
+    setSnModalOpen(false);
+    setActiveSnItem(null);
+    setSnInputText('');
   };
 
   const columns = [
@@ -221,6 +254,43 @@ export const BastCreateForm: React.FC = () => {
           />
         </Form.Item>
       ),
+    },
+    {
+      title: 'Serial Number (S/N)',
+      key: 'serialNumbers',
+      width: 170,
+      render: (_: unknown, record: PoItemRow) => {
+        const serials = serialNumberMap[record.id] || [];
+        const count = serials.length;
+        return (
+          <Space direction="vertical" size={2}>
+            {count > 0 ? (
+              <Button
+                size="small"
+                type="dashed"
+                icon={<BarcodeOutlined />}
+                onClick={() => openSnModal(record)}
+                style={{ borderColor: token.colorPrimary, color: token.colorPrimary }}
+              >
+                {count} S/N Tersimpan
+              </Button>
+            ) : (
+              <Button
+                size="small"
+                icon={<BarcodeOutlined />}
+                onClick={() => openSnModal(record)}
+              >
+                + Input S/N
+              </Button>
+            )}
+            {count > 0 && (
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                {serials.slice(0, 2).join(', ')}{count > 2 ? ` (+${count - 2})` : ''}
+              </Text>
+            )}
+          </Space>
+        );
+      },
     },
     {
       title: 'Qty Cacat / Ditolak (NCR R30)',
@@ -320,10 +390,12 @@ export const BastCreateForm: React.FC = () => {
           const goodQty = Number(itemVal.goodQty ?? item.remainingQuantity ?? 0);
           const rejectQty = Number(itemVal.rejectQty ?? 0);
           const defectNotes = itemVal.defectNotes?.trim() || undefined;
+          const serials = serialNumberMap[item.id] || [];
           return {
             poItemId: item.id,
             quantityReceived: goodQty,
             quantityRejected: rejectQty,
+            serialNumbers: serials.length > 0 ? serials : undefined,
             conditionNotes:
               defectNotes ||
               (rejectQty > 0
@@ -521,6 +593,71 @@ export const BastCreateForm: React.FC = () => {
           </Button>
         </Space>
       </Form>
+
+      <Modal
+        open={snModalOpen}
+        onCancel={() => {
+          setSnModalOpen(false);
+          setActiveSnItem(null);
+          setSnInputText('');
+        }}
+        onOk={handleSaveSn}
+        okText="Simpan Serial Number"
+        cancelText="Batal"
+        title={
+          <Space>
+            <BarcodeOutlined style={{ color: token.colorPrimary }} />
+            <span>Perekaman Serial Number (S/N)</span>
+          </Space>
+        }
+        width={600}
+      >
+        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {activeSnItem && (
+            <div>
+              <Text strong style={{ fontSize: 15 }}>{activeSnItem.itemName}</Text>
+            </div>
+          )}
+          <Alert
+            type="info"
+            showIcon
+            message="Petunjuk Input Serial Number"
+            description="Pindai barcode langsung dengan scanner (akan otomatis berganti baris), atau salin & tempel daftar serial number dari file Excel/teks (satu nomor per baris atau dipisahkan koma)."
+          />
+
+          <div>
+            <Text strong>Daftar Serial Number:</Text>
+            <TextArea
+              rows={6}
+              value={snInputText}
+              onChange={(e) => setSnInputText(e.target.value)}
+              placeholder={"Contoh:\nSN-RTR-1001\nSN-RTR-1002\nSN-RTR-1003"}
+              style={{ marginTop: 6, fontFamily: 'monospace' }}
+            />
+          </div>
+
+          {(() => {
+            const parsed = snInputText
+              .split(/[\n,;]+/)
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0);
+            const count = parsed.length;
+            const itemGoodQty = activeSnItem
+              ? Number(form.getFieldValue(['items', activeSnItem.id, 'goodQty']) ?? activeSnItem.remainingQuantity)
+              : 0;
+            return (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text type="secondary">
+                  Total terinput: <Text strong>{count}</Text> S/N (Qty Diterima Baik: {itemGoodQty})
+                </Text>
+                {count > itemGoodQty && itemGoodQty > 0 && (
+                  <Tag color="warning">Jumlah S/N ({count}) &gt; Qty Baik ({itemGoodQty})</Tag>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      </Modal>
     </div>
   );
 };

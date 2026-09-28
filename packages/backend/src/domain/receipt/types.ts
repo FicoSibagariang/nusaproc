@@ -27,6 +27,7 @@ export interface GoodsReceiptItemRecord {
   quantityReceived: number;
   quantityRejected: number;
   conditionNotes?: string | null;
+  serialNumbers?: string[];
 }
 
 export interface NonConformanceReportRecord {
@@ -47,6 +48,7 @@ export interface GrItemInput {
   quantityReceived: number;
   quantityRejected?: number;
   conditionNotes?: string;
+  serialNumbers?: string[];
 }
 
 export interface SimultaneousInvoiceInput {
@@ -92,6 +94,7 @@ export const recordGoodsReceiptSchema = z.object({
         quantityReceived: z.number().nonnegative('Kuantitas diterima harus >= 0'),
         quantityRejected: z.number().nonnegative('Kuantitas ditolak harus >= 0').optional().default(0),
         conditionNotes: z.string().optional(),
+        serialNumbers: z.array(z.string()).optional().default([]),
       })
     )
     .min(1, 'Penerimaan harus memiliki minimal 1 item'),

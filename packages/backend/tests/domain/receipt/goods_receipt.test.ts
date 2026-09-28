@@ -386,6 +386,35 @@ describe('Epic 6: Goods Receipt (BAST), Simultaneous Invoice Upload & SoD (R28â€
     });
   });
 
+  describe('6. Goods Receipt Serial Numbers Tracking', () => {
+    it('records and retrieves serial numbers per goods receipt item', async () => {
+      const serials = ['SN-CABLE-001', 'SN-CABLE-002'];
+      const gr = await recordGoodsReceipt({
+        poId: issuedPoId,
+        receiptType: 'WAREHOUSE',
+        deliveryNoteNumber: 'SJ-SN-001',
+        receivedDate: '2026-08-23',
+        receivedBy: warehouseUserId,
+        items: [
+          {
+            poItemId: poItemId2,
+            quantityReceived: 2,
+            quantityRejected: 0,
+            serialNumbers: serials,
+          },
+        ],
+      });
+
+      expect(gr.id).toBeDefined();
+
+      const detail = await getGoodsReceiptById(gr.id);
+      expect(detail).toBeDefined();
+      const itemWithSn = detail?.items.find((i) => i.poItemId === poItemId2);
+      expect(itemWithSn).toBeDefined();
+      expect(itemWithSn?.serialNumbers).toEqual(serials);
+    });
+  });
+
   afterAll(async () => {
     await cleanupTestUsers([poAuthorId, poApproverId, warehouseUserId, requesterId]);
     if (vendorId) {
