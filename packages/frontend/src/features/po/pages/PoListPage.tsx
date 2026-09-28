@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Table, Button, Space, Card, Typography, App, theme, Modal, Form, Select, Input, Alert } from 'antd';
-import { FilePdfOutlined, CheckOutlined, SendOutlined, FileTextOutlined, PlusOutlined, EditOutlined, BankOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Card, Typography, App, theme, Modal, Form, Select, Input, Alert, Tooltip } from 'antd';
+import { FilePdfOutlined, CheckOutlined, SendOutlined, FileTextOutlined, PlusOutlined, EditOutlined, BankOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { poApi, type UpdatePoPayload } from '../../../api/endpoints/po';
@@ -207,7 +207,14 @@ export const PoListPage: React.FC = () => {
       },
     },
     {
-      title: 'Status',
+      title: (
+        <Space size={4}>
+          <span>Status</span>
+          <Tooltip title="Arahkan kursor ke label status untuk melihat penjelasan arti dan alur tahapan dokumen">
+            <InfoCircleOutlined style={{ color: token.colorTextSecondary, fontSize: 13, cursor: 'help' }} />
+          </Tooltip>
+        </Space>
+      ),
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => <StatusTag status={status} category="po" />,
