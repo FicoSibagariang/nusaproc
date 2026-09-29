@@ -388,6 +388,23 @@ describe('Epic 7: [Invoice & Tax] Dual-NSFP, Tax Snapshot & 2-Way Matching Engin
       expect(overrideRes.status).toBe(200);
       const overrideData = await overrideRes.json();
       expect(overrideData.data.matchStatus).toBe('EXCEPTION_OVERRIDDEN');
+
+      // 4. Update Tax Details (Faktur Pajak Susulan - US15, R35)
+      const taxRes = await app.request(`/invoices/${invoiceId}/tax`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': apUserId,
+        },
+        body: JSON.stringify({
+          nsfpOriginal: '010.002-26.99887766',
+        }),
+      });
+      expect(taxRes.status).toBe(200);
+      const taxData = await taxRes.json();
+      expect(taxData.success).toBe(true);
+      expect(taxData.data.nsfpOriginal).toBe('010.002-26.99887766');
+      expect(taxData.data.isNsfpValid).toBe(true);
     });
   });
 

@@ -1,6 +1,27 @@
 import React, { useState } from 'react';
-import { Table, Button, Tag, Space, Card, Typography, Modal, Input, Drawer, App, theme } from 'antd';
-import { SyncOutlined, EyeOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import {
+  Table,
+  Button,
+  Tag,
+  Space,
+  Card,
+  Typography,
+  Modal,
+  Input,
+  Drawer,
+  App,
+  theme,
+  Upload,
+  Alert,
+  type UploadFile,
+} from 'antd';
+import {
+  SyncOutlined,
+  EyeOutlined,
+  SafetyCertificateOutlined,
+  UploadOutlined,
+  FileTextOutlined,
+} from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoiceApi } from '../../../api/endpoints/invoice';
 import { formatRupiah } from '../../../utils/currency';
@@ -32,6 +53,13 @@ export const InvoiceListPage: React.FC = () => {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
   const [matcherInvoice, setMatcherInvoice] = useState<InvoiceItem | null>(null);
+
+  // States for uploading deferred tax invoice (Faktur Pajak susulan)
+  const [taxModalOpen, setTaxModalOpen] = useState(false);
+  const [selectedTaxInvoice, setSelectedTaxInvoice] = useState<InvoiceItem | null>(null);
+  const [nsfpInput, setNsfpInput] = useState('');
+  const [taxFileList, setTaxFileList] = useState<UploadFile[]>([]);
+  const [submittingTax, setSubmittingTax] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['invoices'],
@@ -73,6 +101,42 @@ export const InvoiceListPage: React.FC = () => {
     },
   });
 
+  const handleOpenTaxModal = (invoice: InvoiceItem) => {
+    setSelectedTaxInvoice(invoice);
+    setNsfpInput(invoice.nsfpOriginal || '');
+    setTaxFileList([]);
+    setTaxModalOpen(true);
+  };
+
+  const handleSaveTaxInvoice = async () => {
+    if (!selectedTaxInvoice) return;
+    if (!nsfpInput.trim()) {
+      notification.warning({ message: 'Nomor Seri Faktur Pajak (NSFP) wajib diisi!' });
+      return;
+    }
+
+    setSubmittingTax(true);
+    try {
+      await invoiceApi.updateTaxDetails(selectedTaxInvoice.id, {
+        nsfpOriginal: nsfpInput.trim(),
+      });
+      notification.success({
+        message: 'Faktur Pajak Berhasil Diperbarui',
+        description: `Dokumen e-Faktur dan NSFP (${nsfpInput.trim()}) berhasil ditautkan ke tagihan ${selectedTaxInvoice.vendorInvoiceNumber}.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      setTaxModalOpen(false);
+      setSelectedTaxInvoice(null);
+      setNsfpInput('');
+      setTaxFileList([]);
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.detail || err?.message || 'Gagal menyimpan data Faktur Pajak';
+      notification.error({ message: 'Gagal Memperbarui Faktur Pajak', description: errMsg });
+    } finally {
+      setSubmittingTax(false);
+    }
+  };
+
   const invoices: InvoiceItem[] = data?.data || [];
 
   const columns = [
@@ -97,7 +161,24 @@ export const InvoiceListPage: React.FC = () => {
       title: 'NSFP Faktur Pajak',
       dataIndex: 'nsfpOriginal',
       key: 'nsfpOriginal',
-      render: (nsfp: string) => <Tag color="cyan">{nsfp || '-'}</Tag>,
+      width: 200,
+      render: (nsfp: string, record: InvoiceItem) =>
+        nsfp ? (
+          <Tag color="cyan">{nsfp}</Tag>
+        ) : (
+          <Space direction="vertical" size={2}>
+            <Tag color="warning">Menunggu Faktur Pajak</Tag>
+            <Button
+              type="link"
+              size="small"
+              icon={<UploadOutlined />}
+              style={{ padding: 0, height: 'auto', fontSize: 12 }}
+              onClick={() => handleOpenTaxModal(record)}
+            >
+              + Upload Susulan
+            </Button>
+          </Space>
+        ),
     },
     {
       title: 'Total Tagihan',
@@ -123,6 +204,15 @@ export const InvoiceListPage: React.FC = () => {
           >
             Matcher
           </Button>
+          {!record.nsfpOriginal && (
+            <Button
+              size="small"
+              icon={<FileTextOutlined />}
+              onClick={() => handleOpenTaxModal(record)}
+            >
+              + Faktur Pajak
+            </Button>
+          )}
           <Button
             size="small"
             icon={<SyncOutlined />}
@@ -191,6 +281,62 @@ export const InvoiceListPage: React.FC = () => {
           placeholder="Contoh: Disetujui selisih biaya asuransi pengiriman sesuai klausul kontrak nomor..."
           style={{ marginTop: 12 }}
         />
+      </Modal>
+
+      {/* Modal Upload Faktur Pajak Susulan (US15, R35) */}
+      <Modal
+        open={taxModalOpen}
+        title={
+          <Space>
+            <FileTextOutlined style={{ color: token.colorPrimary }} />
+            <span>Unggah Faktur Pajak Susulan: {selectedTaxInvoice?.vendorInvoiceNumber}</span>
+          </Space>
+        }
+        okText="Simpan Faktur Pajak"
+        cancelText="Batal"
+        confirmLoading={submittingTax}
+        onOk={handleSaveTaxInvoice}
+        onCancel={() => {
+          setTaxModalOpen(false);
+          setSelectedTaxInvoice(null);
+          setNsfpInput('');
+          setTaxFileList([]);
+        }}
+        width={550}
+      >
+        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Alert
+            type="info"
+            showIcon
+            message="Pelengkapan Dokumen Faktur Pajak (e-Faktur Coretax)"
+            description="Masukkan Nomor Seri Faktur Pajak (NSFP 16 digit standar atau 17 digit Coretax) dan lampirkan berkas e-Faktur yang diterima dari vendor untuk melengkapi persyaratan pencairan pembayaran."
+          />
+
+          <div>
+            <Text strong>Nomor Seri Faktur Pajak (NSFP):</Text>
+            <Input
+              placeholder="Contoh: 010.002-26.12345678 (16/17 digit)"
+              value={nsfpInput}
+              onChange={(e) => setNsfpInput(e.target.value)}
+              style={{ marginTop: 6 }}
+            />
+          </div>
+
+          <div>
+            <Text strong>Unggah Berkas PDF e-Faktur:</Text>
+            <Upload
+              fileList={taxFileList}
+              onChange={({ fileList }) => setTaxFileList(fileList)}
+              beforeUpload={() => false}
+              accept=".pdf,.png,.jpg,.jpeg"
+              maxCount={1}
+            >
+              <Button icon={<UploadOutlined />} style={{ marginTop: 6 }}>
+                Pilih Berkas PDF e-Faktur
+              </Button>
+            </Upload>
+          </div>
+        </div>
       </Modal>
 
       {/* Side-by-Side 2-Way Matcher Drawer */}

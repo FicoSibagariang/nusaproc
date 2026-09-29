@@ -5,6 +5,7 @@ import {
   listInvoices,
   runTwoWayMatching,
   overrideMatchingException,
+  updateInvoiceTaxDetails,
 } from './service';
 import { InvoiceRepository } from './repository';
 import { formatProblemDetails } from '../sod/errors';
@@ -96,6 +97,21 @@ export function createInvoiceApp(): Hono {
     try {
       const exceptions = await repo.findMatchingExceptionsByInvoiceId(id);
       return c.json({ success: true, data: exceptions });
+    } catch (err: unknown) {
+      return c.json(formatProblemDetails(err, c.req.path), 400);
+    }
+  });
+
+  // 7. Update Invoice Tax Details (Faktur Pajak Susulan - US15, R35)
+  app.patch('/invoices/:id/tax', async (c) => {
+    const id = c.req.param('id');
+    try {
+      const body = await c.req.json();
+      if (!body.nsfpOriginal) {
+        return c.json({ title: 'Bad Request', status: 400, detail: 'Nomor Seri Faktur Pajak (NSFP) wajib diisi.' }, 400);
+      }
+      const updated = await updateInvoiceTaxDetails(id, body.nsfpOriginal);
+      return c.json({ success: true, data: updated });
     } catch (err: unknown) {
       return c.json(formatProblemDetails(err, c.req.path), 400);
     }

@@ -250,4 +250,46 @@ export class InvoiceRepository {
     `) as unknown as Array<{ role: string }>;
     return rows.map((r) => r.role);
   }
+
+  async updateInvoiceTaxDetails(
+    id: string,
+    nsfpOriginal: string
+  ): Promise<InvoiceRecord> {
+    const { validateNsfp } = await import('./types');
+    const nsfpVal = validateNsfp(nsfpOriginal);
+    if (!nsfpVal.isValid) {
+      throw new Error(
+        `Format NSFP tidak valid (R35): '${nsfpOriginal}' bukan format 16 digit standar atau 17 digit Coretax.`
+      );
+    }
+
+    const rows = await this.db`
+      UPDATE invoice
+      SET
+        nsfp_original = ${nsfpOriginal},
+        nsfp_normalized = ${nsfpVal.normalized},
+        is_nsfp_valid = ${nsfpVal.isValid},
+        updated_at = clock_timestamp()
+      WHERE id = ${id}
+      RETURNING
+        id, invoice_number_internal AS "invoiceNumberInternal",
+        vendor_invoice_number AS "vendorInvoiceNumber",
+        vendor_invoice_normalized AS "vendorInvoiceNormalized",
+        vendor_id AS "vendorId", po_id AS "poId", gr_id AS "grId",
+        invoice_type AS "invoiceType", invoice_date::text AS "invoiceDate",
+        due_date::text AS "dueDate", subtotal_amount::float AS "subtotalAmount",
+        ppn_amount::float AS "ppnAmount", pph_amount::float AS "pphAmount",
+        total_payable_amount::float AS "totalPayableAmount",
+        nsfp_original AS "nsfpOriginal", nsfp_normalized AS "nsfpNormalized",
+        is_nsfp_valid AS "isNsfpValid", tax_snapshot_id AS "taxSnapshotId",
+        match_status AS "matchStatus", is_held_for_tax AS "isHeldForTax",
+        uploaded_by AS "uploadedBy", created_at::text AS "createdAt", updated_at::text AS "updatedAt"
+    `;
+
+    if (rows.length === 0) {
+      throw new Error(`Invoice '${id}' tidak ditemukan.`);
+    }
+
+    return rows[0] as unknown as InvoiceRecord;
+  }
 }

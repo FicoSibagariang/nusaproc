@@ -173,3 +173,8 @@ export async function listInvoices(filters?: {
   const repo = new InvoiceRepository();
   return await repo.findInvoices(filters);
 }
+
+export async function updateInvoiceTaxDetails(invoiceId: string, nsfpOriginal: string): Promise<InvoiceRecord> {
+  const repo = new InvoiceRepository();
+  return await repo.updateInvoiceTaxDetails(invoiceId, nsfpOriginal);
+}

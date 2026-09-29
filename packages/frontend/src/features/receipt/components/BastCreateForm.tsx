@@ -19,6 +19,7 @@ import {
   Alert,
   Modal,
   Tag,
+  type UploadFile,
 } from 'antd';
 import {
   InboxOutlined,
@@ -26,6 +27,7 @@ import {
   ArrowLeftOutlined,
   FileDoneOutlined,
   BarcodeOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -74,6 +76,8 @@ export const BastCreateForm: React.FC = () => {
   const [snModalOpen, setSnModalOpen] = useState(false);
   const [activeSnItem, setActiveSnItem] = useState<PoItemRow | null>(null);
   const [snInputText, setSnInputText] = useState('');
+  const [invoiceFileList, setInvoiceFileList] = useState<UploadFile[]>([]);
+  const [taxInvoiceFileList, setTaxInvoiceFileList] = useState<UploadFile[]>([]);
 
   useEffect(() => {
     poApi
@@ -377,6 +381,11 @@ export const BastCreateForm: React.FC = () => {
   ];
 
   const handleSubmit = async (values: Record<string, any>) => {
+    if (invoiceFileList.length === 0) {
+      message.warning('Wajib melampirkan berkas fisik Tagihan / Invoice atau Surat Jalan vendor saat penerimaan barang (R29)!');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const payload: CreateReceiptPayload = {
@@ -543,13 +552,27 @@ export const BastCreateForm: React.FC = () => {
           />
         </Card>
 
-        {/* Simultaneous Invoice & Tax Invoice Upload Component (R29) */}
-        <Card title="Unggah Serentak Tagihan Vendor & Faktur Pajak (R29 Simultaneous Upload)" style={{ marginBottom: 24 }}>
+        {/* 1. Wajib Unggah Tagihan / Invoice Fisik Vendor (R29) */}
+        <Card
+          title={
+            <Space>
+              <span>1. Unggah Tagihan / Invoice Fisik Vendor</span>
+              <Tag color="red">Wajib saat Penerimaan</Tag>
+            </Space>
+          }
+          style={{ marginBottom: 24 }}
+        >
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message="Tagihan Fisik Wajib Dilampirkan saat Serah Terima Barang (R29)"
+            description="Unggah berkas Invoice Fisik atau Surat Jalan asli yang dibawa oleh kurir/ekspedisi vendor saat serah terima barang di gudang. Faktur Pajak elektronik (e-Faktur) TIDAK diwajibkan di sini dan dapat diunggah menyusul oleh tim Finance/Pajak."
+          />
           <Dragger
-            name="files"
-            multiple
-            action="/api/v1/storage/upload"
-            accept=".pdf,.png,.jpg,.jpeg"
+            name="invoiceFiles"
+            fileList={invoiceFileList}
+            onChange={({ fileList }) => setInvoiceFileList(fileList)}
             beforeUpload={(file) => {
               const isValidType =
                 file.type === 'application/pdf' ||
@@ -558,17 +581,75 @@ export const BastCreateForm: React.FC = () => {
               if (!isValidType) {
                 message.error('Format file harus PDF, PNG, atau JPEG!');
               }
-              return isValidType || Upload.LIST_IGNORE;
+              return false; // simpan di state lokal form
             }}
+            accept=".pdf,.png,.jpg,.jpeg"
+            maxCount={5}
           >
             <p className="ant-upload-drag-icon">
-              <InboxOutlined style={{ color: token.colorPrimary, fontSize: 48 }} />
+              <InboxOutlined style={{ color: token.colorPrimary, fontSize: 44 }} />
             </p>
             <p className="ant-upload-text" style={{ fontSize: 16, fontWeight: 600 }}>
-              Tarik file ke sini
+              Klik atau tarik berkas Invoice Vendor ke sini (Wajib)
             </p>
             <p className="ant-upload-hint">
-              Mendukung file PDF asli, PNG, atau JPEG. File akan otomatis divalidasi magic bytes dan dipindai antivirus secara instan (R51).
+              Mendukung file PDF asli, foto fisik PNG, atau JPEG (maksimal 5 berkas).
+            </p>
+          </Dragger>
+        </Card>
+
+        {/* 2. Opsional / Menyusul: Unggah Faktur Pajak Elektronik (e-Faktur) */}
+        <Card
+          title={
+            <Space>
+              <span>2. Faktur Pajak Elektronik (e-Faktur)</span>
+              <Tag color="blue">Opsional / Bisa Menyusul</Tag>
+            </Space>
+          }
+          style={{ marginBottom: 24 }}
+        >
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message="Faktur Pajak Dapat Diunggah Menyusul oleh Tim Pajak / Finance"
+            description="Jika vendor belum menerbitkan e-Faktur saat pengiriman barang, bagian ini dapat dikosongkan. Tim Finance / Tax Specialist dapat melengkapi Faktur Pajak susulan dan memvalidasi NSFP Coretax di menu Verifikasi Tagihan (/invoices) sebelum proses pencairan pembayaran."
+          />
+          <Row gutter={16} style={{ marginBottom: 16 }}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="nsfpOriginal"
+                label="Nomor Seri Faktur Pajak (NSFP) — Jika Sudah Diterbitkan Vendor"
+              >
+                <Input placeholder="Contoh: 010.002-26.12345678 (16/17 digit)" allowClear />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Dragger
+            name="taxInvoiceFiles"
+            fileList={taxInvoiceFileList}
+            onChange={({ fileList }) => setTaxInvoiceFileList(fileList)}
+            beforeUpload={(file) => {
+              const isValidType =
+                file.type === 'application/pdf' ||
+                file.type === 'image/png' ||
+                file.type === 'image/jpeg';
+              if (!isValidType) {
+                message.error('Format file harus PDF, PNG, atau JPEG!');
+              }
+              return false; // simpan di state lokal form
+            }}
+            accept=".pdf,.png,.jpg,.jpeg"
+            maxCount={2}
+          >
+            <p className="ant-upload-drag-icon">
+              <FileTextOutlined style={{ color: token.colorTextSecondary, fontSize: 36 }} />
+            </p>
+            <p className="ant-upload-text" style={{ fontSize: 14 }}>
+              Tarik berkas Faktur Pajak ke sini jika sudah ada (Opsional)
+            </p>
+            <p className="ant-upload-hint">
+              Kosongkan jika belum tersedia dari vendor. Tim Pajak dapat melengkapinya di modul Tagihan.
             </p>
           </Dragger>
         </Card>

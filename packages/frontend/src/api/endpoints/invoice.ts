@@ -34,4 +34,7 @@ export const invoiceApi = {
 
   getExceptions: (id: string) =>
     apiClient.get(`/invoices/${id}/exceptions`).then((res) => res.data),
+
+  updateTaxDetails: (id: string, data: { nsfpOriginal: string }) =>
+    apiClient.patch(`/invoices/${id}/tax`, data).then((res) => res.data),
 };
