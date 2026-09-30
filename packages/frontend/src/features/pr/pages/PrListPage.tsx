@@ -256,7 +256,7 @@ export const PrListPage: React.FC = () => {
                         <div>Nilai: {formatRupiah(po.grandTotalAmount)}</div>
                       )}
                       <div style={{ fontSize: 11, color: '#d9d9d9', marginTop: 4 }}>
-                        Klik untuk melihat di halaman PO
+                        Klik untuk membuka rincian dokumen PO
                       </div>
                     </div>
                   }
@@ -264,7 +264,7 @@ export const PrListPage: React.FC = () => {
                   <Tag
                     color={tagColor}
                     style={{ cursor: 'pointer', padding: '2px 8px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                    onClick={() => navigate('/po')}
+                    onClick={() => navigate(`/po?poId=${po.id}`)}
                   >
                     <FileTextOutlined />
                     <span>{po.poNumber}</span>

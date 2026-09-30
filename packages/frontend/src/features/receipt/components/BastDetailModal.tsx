@@ -219,7 +219,7 @@ export const BastDetailModal: React.FC<BastDetailModalProps> = ({
                 icon={<ShoppingCartOutlined />}
                 onClick={() => {
                   onClose();
-                  navigate('/po');
+                  navigate(`/po?poId=${receipt.poId}`);
                 }}
               >
                 Buka Dokumen PO ({receipt.poNumber})
@@ -267,7 +267,16 @@ export const BastDetailModal: React.FC<BastDetailModalProps> = ({
               <Text strong style={{ color: token.colorPrimary }}>{receipt.grNumber}</Text>
             </Descriptions.Item>
             <Descriptions.Item label="Nomor PO Terkait">
-              <Text strong style={{ color: token.colorPrimary }}>{receipt.poNumber || receipt.poId}</Text>
+              <Button
+                type="link"
+                style={{ padding: 0, height: 'auto', fontWeight: 600, color: token.colorPrimary }}
+                onClick={() => {
+                  onClose();
+                  navigate(`/po?poId=${receipt.poId}`);
+                }}
+              >
+                {receipt.poNumber || receipt.poId}
+              </Button>
             </Descriptions.Item>
             <Descriptions.Item label="Vendor Rekanan">
               <Text strong>{receipt.vendorName || '-'}</Text>

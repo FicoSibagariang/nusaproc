@@ -74,7 +74,15 @@ export const ReceiptListPage: React.FC = () => {
       render: (_: unknown, record: ReceiptRow) => (
         <Space direction="vertical" size={0}>
           {record.poNumber ? (
-            <Text strong style={{ color: token.colorPrimary }}>{record.poNumber}</Text>
+            <Tooltip title="Klik untuk membuka rincian dokumen PO">
+              <Button
+                type="link"
+                style={{ padding: 0, height: 'auto', fontWeight: 600, color: token.colorPrimary }}
+                onClick={() => navigate(`/po?poId=${record.poId}`)}
+              >
+                {record.poNumber}
+              </Button>
+            </Tooltip>
           ) : (
             <Text type="secondary">-</Text>
           )}

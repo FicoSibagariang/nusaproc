@@ -140,7 +140,7 @@ export const NcrListPage: React.FC = () => {
               size="small"
               icon={<ShoppingCartOutlined />}
               style={{ padding: 0, height: 'auto', fontSize: 12 }}
-              onClick={() => navigate('/po')}
+              onClick={() => navigate(`/po?poId=${record.poId}`)}
             >
               PO: {record.poNumber || `${record.poId.slice(0, 8)}...`}
             </Button>

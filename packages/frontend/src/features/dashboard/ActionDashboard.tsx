@@ -129,7 +129,7 @@ export const ActionDashboard: React.FC = () => {
           amount: Number(po.grandTotalAmount) || 0,
           slaRemainingMinutes: calculateSlaRemainingMinutes(po.createdAt, 48),
           priority: Number(po.grandTotalAmount) >= 50_000_000 ? 'HIGH' : 'MEDIUM',
-          actionUrl: '/approvals/po',
+          actionUrl: `/approvals/po?poId=${po.id}`,
           createdAt: po.createdAt,
         });
       });
@@ -163,7 +163,7 @@ export const ActionDashboard: React.FC = () => {
           amount: Number(po.grandTotalAmount) || 0,
           slaRemainingMinutes: calculateSlaRemainingMinutes(po.approvedAt || po.createdAt, 24),
           priority: 'MEDIUM',
-          actionUrl: '/po',
+          actionUrl: `/po?poId=${po.id}`,
           createdAt: po.approvedAt || po.createdAt,
         });
       });
@@ -346,7 +346,7 @@ export const ActionDashboard: React.FC = () => {
           amount: Number(po.grandTotalAmount) || 0,
           slaRemainingMinutes: calculateSlaRemainingMinutes(po.createdAt, 48),
           priority: 'MEDIUM',
-          actionUrl: '/approvals/po',
+          actionUrl: `/approvals/po?poId=${po.id}`,
           createdAt: po.createdAt,
         });
       });

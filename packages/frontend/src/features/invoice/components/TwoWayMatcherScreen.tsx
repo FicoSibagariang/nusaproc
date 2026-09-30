@@ -26,6 +26,7 @@ import { formatRupiah } from '../../../utils/currency';
 import { evaluateTwoWayMatchingStatus } from '../utils/matching';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { invoiceApi } from '../../../api/endpoints/invoice';
+import { useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -34,6 +35,7 @@ interface MatcherProps {
   invoiceId?: string;
   onOverrideSuccess?: () => void;
   poData: {
+    poId?: string;
     poNumber: string;
     vendorName?: string;
     totalAmount: number;
@@ -52,6 +54,7 @@ interface MatcherProps {
 export const TwoWayMatcherScreen: React.FC<MatcherProps> = ({ invoiceId, onOverrideSuccess, poData, invoiceData }) => {
   const { message } = App.useApp();
   const { token } = theme.useToken();
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
   const [overrideReason, setOverrideReason] = useState('');
@@ -152,7 +155,17 @@ export const TwoWayMatcherScreen: React.FC<MatcherProps> = ({ invoiceId, onOverr
             title={
               <Space>
                 <Tag color="blue">SURAT PESANAN (PO)</Tag>
-                <span>{poData.poNumber}</span>
+                {poData.poId ? (
+                  <Button
+                    type="link"
+                    style={{ padding: 0, fontWeight: 600, height: 'auto', color: token.colorPrimary }}
+                    onClick={() => navigate(`/po?poId=${poData.poId}`)}
+                  >
+                    {poData.poNumber} ↗
+                  </Button>
+                ) : (
+                  <span>{poData.poNumber}</span>
+                )}
               </Space>
             }
             bordered

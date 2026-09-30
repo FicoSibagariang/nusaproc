@@ -24,8 +24,8 @@ describe('PR List Page Related POs Display (Option A)', () => {
     expect(content).toContain('po.vendorName');
     expect(content).toContain('po.grandTotalAmount');
 
-    // Click navigation to /po
-    expect(content).toContain("onClick={() => navigate('/po')}");
+    // Click navigation to /po with deep link to PO detail
+    expect(content).toContain("onClick={() => navigate(`/po?poId=${po.id}`)}");
 
     // Smart Action button for partially vs fully ordered PRs
     expect(content).toContain('Terbitkan Sisa PO');

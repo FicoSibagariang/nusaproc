@@ -360,6 +360,7 @@ export const InvoiceListPage: React.FC = () => {
               setMatcherInvoice(null);
             }}
             poData={{
+              poId: matcherInvoice.poId,
               poNumber: matcherInvoice.poNumber || matcherInvoice.poId || 'PO-202608-0001',
               vendorName: 'PT Fiber Optik Nusantara',
               totalAmount: Number(matcherInvoice.totalPayableAmount) || 10000000,

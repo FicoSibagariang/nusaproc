@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, Button, Space, Card, Typography, App, theme, Modal, Form, Select, Input, Alert, Tooltip } from 'antd';
 import { FilePdfOutlined, CheckOutlined, SendOutlined, FileTextOutlined, PlusOutlined, EditOutlined, BankOutlined, InfoCircleOutlined, InboxOutlined, EyeOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { poApi, type UpdatePoPayload } from '../../../api/endpoints/po';
 import { vendorApi } from '../../../api/endpoints/vendor';
 import { formatRupiah } from '../../../utils/currency';
@@ -33,6 +33,7 @@ export const PoListPage: React.FC = () => {
   const { notification } = App.useApp();
   const { token } = theme.useToken();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -41,6 +42,15 @@ export const PoListPage: React.FC = () => {
   const [editForm] = Form.useForm();
   const [selectedDetailPoId, setSelectedDetailPoId] = useState<string | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+
+  // Deep-linking: auto-open PO Detail Modal if ?poId=... or ?id=... is present in URL
+  const poIdFromQuery = searchParams.get('poId') || searchParams.get('id');
+  useEffect(() => {
+    if (poIdFromQuery) {
+      setSelectedDetailPoId(poIdFromQuery);
+      setDetailModalOpen(true);
+    }
+  }, [poIdFromQuery]);
 
   // Fetch PO list from backend
   const { data, isLoading } = useQuery({
@@ -451,6 +461,12 @@ export const PoListPage: React.FC = () => {
         onClose={() => {
           setDetailModalOpen(false);
           setSelectedDetailPoId(null);
+          if (searchParams.has('poId') || searchParams.has('id')) {
+            const nextParams = new URLSearchParams(searchParams);
+            nextParams.delete('poId');
+            nextParams.delete('id');
+            setSearchParams(nextParams, { replace: true });
+          }
         }}
         onStatusUpdated={() => {
           queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });

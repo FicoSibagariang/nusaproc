@@ -573,10 +573,10 @@ export const PrDetailModal: React.FC<PrDetailModalProps> = ({
                           style={{ padding: 0, height: 'auto', marginTop: 4 }}
                           onClick={() => {
                             handleModalClose();
-                            navigate('/po');
+                            navigate(`/po?poId=${po.id}`);
                           }}
                         >
-                          Lihat di Daftar PO →
+                          Buka Dokumen PO ({po.poNumber}) →
                         </Button>
                       </Space>
                     </Card>
