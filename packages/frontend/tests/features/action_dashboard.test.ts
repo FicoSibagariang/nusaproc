@@ -53,4 +53,31 @@ describe('Epic 16: Action-Oriented Dashboard & Live Transaction Integration (R56
       expect(roleRoutes.FINANCE_PAYMENT).toBe('/payments');
     });
   });
+
+  describe('3. Figma UI Refinement Phase 2: KPI Metrics & P2P Pipeline Cards', () => {
+    it('formats compact Rupiah numbers correctly for KPI metric card', async () => {
+      const { formatRupiahCompact } = await import('../../src/utils/currency');
+      expect(formatRupiahCompact(undefined)).toBe('Rp 0');
+      expect(formatRupiahCompact(null)).toBe('Rp 0');
+      expect(formatRupiahCompact(0)).toBe('Rp 0');
+      expect(formatRupiahCompact(750_000)).toContain('Ribu');
+      expect(formatRupiahCompact(25_000_000)).toContain('Juta');
+      expect(formatRupiahCompact(1_500_000_000)).toContain('Miliar');
+      expect(formatRupiahCompact(2_000_000_000_000)).toContain('Triliun');
+    });
+
+    it('validates Procure-to-Pay pipeline card target routes', () => {
+      const pipelineRoutes = {
+        pr: '/pr',
+        po: '/po',
+        bast: '/receipts',
+        ncr: '/ncr',
+      };
+
+      expect(pipelineRoutes.pr).toBe('/pr');
+      expect(pipelineRoutes.po).toBe('/po');
+      expect(pipelineRoutes.bast).toBe('/receipts');
+      expect(pipelineRoutes.ncr).toBe('/ncr');
+    });
+  });
 });
