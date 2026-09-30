@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Table,
   Button,
@@ -17,6 +17,9 @@ import {
   Alert,
   Popconfirm,
   Tooltip,
+  Tabs,
+  Breadcrumb,
+  Popover,
   type TableProps,
 } from 'antd';
 import {
@@ -27,15 +30,20 @@ import {
   SearchOutlined,
   DeleteOutlined,
   EditOutlined,
+  FileTextOutlined,
+  CopyOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  EyeOutlined,
+  InfoCircleOutlined,
+  MoreOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { vendorApi, type CreateVendorPayload, type CreateBankAccountPayload } from '../../../api/endpoints/vendor';
 import { useAuthStore } from '../../../stores/useAuthStore';
-import { PageHeader } from '../../../components/common/PageHeader';
-import { StatusTag } from '../../../components/common/StatusTag';
 import { maskNpwp, validateNpwp } from '../../../utils/tax';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 export interface VendorDisplayItem {
   id: string;
@@ -91,49 +99,77 @@ const DEFAULT_VENDORS: VendorDisplayItem[] = [
         bankCode: '008',
         accountNumber: '••••••••040',
         accountHolderName: 'PT Mitra Solusi Jaringan',
-        status: 'PENDING_STAGE_2',
+        status: 'ACTIVE',
         approvedBy1: 'AP Maker',
+        approvedBy2: 'Head of AP',
       },
     ],
   },
   {
     id: '20000000-0000-0000-0000-000000000003',
-    vendorCode: 'VEND-CYBER-003',
-    name: 'PT Cyber Infratech Indonesia',
-    taxIdentificationNumber: '03.456.789.0-014.000',
+    vendorCode: 'VEND-MTWS1PBX-5663',
+    name: 'KOPNUTERA',
+    taxIdentificationNumber: '017907312123000',
     isPkp: false,
-    status: 'BLACKLISTED',
+    status: 'PROSPECTIVE',
     bankAccounts: [
       {
         id: '30000000-0000-0000-0000-000000000003',
+        bankName: 'Mandiri',
+        bankCode: '008',
+        accountNumber: '••••••••4321',
+        accountHolderName: 'Koperasi KOPNUTERA',
+        status: 'PENDING_STAGE_1',
+      },
+      {
+        id: '30000000-0000-0000-0000-000000000004',
         bankName: 'BCA',
         bankCode: '014',
-        accountNumber: '••••••••899',
-        accountHolderName: 'PT Cyber Infratech Indonesia',
-        status: 'ACTIVE',
+        accountNumber: '••••••••7890',
+        accountHolderName: 'Koperasi KOPNUTERA',
+        status: 'PENDING_STAGE_1',
       },
     ],
   },
 ];
 
 export const VendorListPage: React.FC = () => {
-  const { message } = App.useApp();
   const { token } = theme.useToken();
-  const { user } = useAuthStore();
+  const { message } = App.useApp();
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
 
-  const { data: serverVendorsRes, isLoading } = useQuery({
+  const [activeTab, setActiveTab] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [pkpFilter, setPkpFilter] = useState<string>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [revealedBankIds, setRevealedBankIds] = useState<Set<string>>(new Set());
+
+  // Modals
+  const [isCreateVendorOpen, setIsCreateVendorOpen] = useState(false);
+  const [isAddBankOpen, setIsAddBankOpen] = useState(false);
+  const [isVerifyBankOpen, setIsVerifyBankOpen] = useState(false);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [selectedVendor, setSelectedVendor] = useState<VendorDisplayItem | null>(null);
+  const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
+
+  const [createVendorForm] = Form.useForm<CreateVendorPayload>();
+  const [addBankForm] = Form.useForm<CreateBankAccountPayload>();
+  const [verifyBankForm] = Form.useForm<{ action: 'VERIFY_STAGE_1' | 'VERIFY_STAGE_2' | 'REJECT'; rejectionReason?: string }>();
+  const [statusForm] = Form.useForm<{ status: 'PROSPECTIVE' | 'APPROVED' | 'SUSPENDED' | 'BLACKLISTED'; reason?: string }>();
+  const watchedAction = Form.useWatch('action', verifyBankForm);
+
+  const { data: serverVendorsRes } = useQuery({
     queryKey: ['vendors'],
-    queryFn: () => vendorApi.list().catch(() => ({ data: [] })),
+    queryFn: () => vendorApi.list(),
   });
 
   const [vendors, setVendors] = useState<VendorDisplayItem[]>(DEFAULT_VENDORS);
 
   useEffect(() => {
-    const serverVendors = serverVendorsRes?.data;
-    if (Array.isArray(serverVendors) && serverVendors.length > 0) {
+    if (serverVendorsRes?.data && Array.isArray(serverVendorsRes.data) && serverVendorsRes.data.length > 0) {
       setVendors(
-        serverVendors.map((v: any) => ({
+        serverVendorsRes.data.map((v: any) => ({
           id: v.id,
           vendorCode: v.vendorCode,
           name: v.name,
@@ -162,23 +198,6 @@ export const VendorListPage: React.FC = () => {
     }
   }, [serverVendorsRes]);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
-
-  // Modals
-  const [isCreateVendorOpen, setIsCreateVendorOpen] = useState(false);
-  const [isAddBankOpen, setIsAddBankOpen] = useState(false);
-  const [isVerifyBankOpen, setIsVerifyBankOpen] = useState(false);
-  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
-  const [selectedVendor, setSelectedVendor] = useState<VendorDisplayItem | null>(null);
-  const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
-
-  const [createVendorForm] = Form.useForm<CreateVendorPayload>();
-  const [addBankForm] = Form.useForm<CreateBankAccountPayload>();
-  const [verifyBankForm] = Form.useForm<{ action: 'VERIFY_STAGE_1' | 'VERIFY_STAGE_2' | 'REJECT'; rejectionReason?: string }>();
-  const [statusForm] = Form.useForm<{ status: 'PROSPECTIVE' | 'APPROVED' | 'SUSPENDED' | 'BLACKLISTED'; reason?: string }>();
-  const watchedAction = Form.useWatch('action', verifyBankForm);
-
   const selectedBankAccount = selectedVendor?.bankAccounts?.find((b) => b.id === selectedBankId);
   const currentBankStatus = selectedBankAccount?.status;
   const verifier1 = selectedBankAccount?.approvedBy1;
@@ -194,6 +213,24 @@ export const VendorListPage: React.FC = () => {
         (user.email && user.email.trim().toLowerCase() === verifier1.trim().toLowerCase())
       )
   );
+
+  const handleToggleReveal = (bankId: string) => {
+    setRevealedBankIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(bankId)) {
+        next.delete(bankId);
+      } else {
+        next.add(bankId);
+        message.info('Nomor rekening ditampilkan. Akses ini dicatat di Audit Trail.');
+      }
+      return next;
+    });
+  };
+
+  const handleCopyNpwp = (npwp: string) => {
+    navigator.clipboard?.writeText(npwp);
+    message.success('Nomor NPWP berhasil disalin ke clipboard.');
+  };
 
   const createVendorMutation = useMutation({
     mutationFn: (payload: CreateVendorPayload) => vendorApi.create(payload),
@@ -345,131 +382,333 @@ export const VendorListPage: React.FC = () => {
     },
   });
 
-  const filteredVendors = vendors.filter((v) => {
-    if (statusFilter && v.status !== statusFilter) return false;
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      return (
-        v.name.toLowerCase().includes(term) ||
-        v.vendorCode.toLowerCase().includes(term) ||
-        v.taxIdentificationNumber.includes(term)
-      );
-    }
-    return true;
-  });
+  // Filtered vendors
+  const filteredVendors = useMemo(() => {
+    return vendors.filter((v) => {
+      // Tab filter
+      if (activeTab === 'APPROVED' && v.status !== 'APPROVED') return false;
+      if (activeTab === 'PROSPECTIVE' && v.status !== 'PROSPECTIVE') return false;
+      if (activeTab === 'SUSPENDED' && v.status !== 'SUSPENDED') return false;
+      if (activeTab === 'BLACKLISTED' && v.status !== 'BLACKLISTED') return false;
+
+      // Status dropdown filter
+      if (statusFilter !== 'ALL' && v.status !== statusFilter) return false;
+
+      // PKP filter
+      if (pkpFilter === 'PKP' && !v.isPkp) return false;
+      if (pkpFilter === 'NON_PKP' && v.isPkp) return false;
+
+      // Search term
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase().trim();
+        if (
+          !v.name.toLowerCase().includes(term) &&
+          !v.vendorCode.toLowerCase().includes(term) &&
+          !v.taxIdentificationNumber.includes(term)
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [vendors, activeTab, statusFilter, pkpFilter, searchTerm]);
+
+  const approvedCount = vendors.filter((v) => v.status === 'APPROVED').length;
+  const prospectiveCount = vendors.filter((v) => v.status === 'PROSPECTIVE').length;
+
+  const statusTabItems = [
+    {
+      key: 'ALL',
+      label: (
+        <Space size={6}>
+          <span>Semua</span>
+          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+            {vendors.length}
+          </Tag>
+        </Space>
+      ),
+    },
+    {
+      key: 'APPROVED',
+      label: (
+        <Space size={6}>
+          <span>Disetujui</span>
+          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'APPROVED' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'APPROVED' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+            {approvedCount}
+          </Tag>
+        </Space>
+      ),
+    },
+    {
+      key: 'PROSPECTIVE',
+      label: (
+        <Space size={6}>
+          <span>Prospek</span>
+          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'PROSPECTIVE' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'PROSPECTIVE' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+            {prospectiveCount}
+          </Tag>
+        </Space>
+      ),
+    },
+  ];
+
+  // Bank popover content (Figma 04b)
+  const renderBankPopoverContent = (record: VendorDisplayItem) => {
+    const accounts = record.bankAccounts || [];
+    return (
+      <div style={{ width: 330, padding: '4px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          <div>
+            <Text strong style={{ fontSize: 14, color: '#1f1f1f', display: 'block' }}>
+              Rekening bank
+            </Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {record.name} · {accounts.length} rekening
+            </Text>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 300, overflowY: 'auto' }}>
+          {accounts.length === 0 ? (
+            <Text type="secondary" style={{ fontSize: 12, padding: '8px 0' }}>
+              Belum ada rekening bank yang didaftarkan.
+            </Text>
+          ) : (
+            accounts.map((b) => (
+              <div
+                key={b.id}
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  backgroundColor: '#fafafa',
+                  border: '1px solid #f0f0f0',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <Text strong style={{ fontSize: 13 }}>{b.bankName}</Text>
+                  <Tag
+                    color={b.status === 'ACTIVE' ? 'success' : b.status === 'REJECTED' ? 'error' : 'warning'}
+                    style={{ fontSize: 11, borderRadius: 4, margin: 0 }}
+                  >
+                    {b.status === 'ACTIVE'
+                      ? 'Terverifikasi'
+                      : b.status === 'PENDING_STAGE_1'
+                      ? 'Menunggu verifikasi 1'
+                      : b.status === 'PENDING_STAGE_2'
+                      ? 'Menunggu verifikasi 2'
+                      : 'Ditolak'}
+                  </Tag>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <Text style={{ fontFamily: 'monospace', fontSize: 12 }}>
+                    {revealedBankIds.has(b.id) ? b.accountNumber : `•••• •••• ${b.accountNumber.slice(-4)}`}
+                  </Text>
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<EyeOutlined />}
+                    style={{ padding: 0, height: 'auto', fontSize: 11 }}
+                    onClick={() => handleToggleReveal(b.id)}
+                  >
+                    {revealedBankIds.has(b.id) ? 'Sembunyikan' : 'Tampilkan'}
+                  </Button>
+                </div>
+
+                {b.status.startsWith('PENDING') && (
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<SafetyCertificateOutlined />}
+                    style={{ width: '100%', fontSize: 12, borderRadius: 6, background: '#1677ff' }}
+                    onClick={() => {
+                      setSelectedVendor(record);
+                      setSelectedBankId(b.id);
+                      verifyBankForm.setFieldsValue({
+                        action: b.status === 'PENDING_STAGE_1' ? 'VERIFY_STAGE_1' : 'VERIFY_STAGE_2',
+                        rejectionReason: '',
+                      });
+                      setIsVerifyBankOpen(true);
+                    }}
+                  >
+                    Verifikasi 4-Eyes
+                  </Button>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid #f0f0f0' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 12 }}>
+            <SafetyCertificateOutlined style={{ color: '#8c8c8c', marginTop: 2, fontSize: 12 }} />
+            <Text type="secondary" style={{ fontSize: 11, lineHeight: 1.3 }}>
+              Nomor lengkap hanya tampil setelah verifikasi ulang identitas dan setiap aksesnya tercatat di Audit Trail.
+            </Text>
+          </div>
+          <Button
+            type="dashed"
+            block
+            icon={<PlusOutlined />}
+            style={{ borderRadius: 6 }}
+            onClick={() => {
+              setSelectedVendor(record);
+              setIsAddBankOpen(true);
+            }}
+          >
+            + Tambah rekening
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   const columns: TableProps<VendorDisplayItem>['columns'] = [
     {
-      title: 'Kode Vendor',
-      dataIndex: 'vendorCode',
-      key: 'vendorCode',
-      render: (code: string) => (
-        <Tag color="geekblue" style={{ fontWeight: 600 }}>
-          {code}
+      title: 'Vendor',
+      key: 'vendor',
+      render: (_, r) => (
+        <div>
+          <Text strong style={{ fontSize: 13, display: 'block', color: '#1f1f1f' }}>
+            {r.name}
+          </Text>
+          <div style={{ marginTop: 3 }}>
+            <Tag
+              style={{
+                borderRadius: 4,
+                background: '#f5f5f5',
+                border: '1px solid #e8e8e8',
+                fontSize: 11,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                margin: 0,
+              }}
+            >
+              <FileTextOutlined style={{ color: '#8c8c8c' }} />
+              <span>{r.vendorCode}</span>
+            </Tag>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'NPWP',
+      dataIndex: 'taxIdentificationNumber',
+      key: 'taxIdentificationNumber',
+      render: (npwp: string) => (
+        <Space size={6}>
+          <Text style={{ fontFamily: 'monospace', fontSize: 12 }}>
+            {maskNpwp(npwp)}
+          </Text>
+          <Tooltip title="Salin NPWP">
+            <Button
+              type="text"
+              size="small"
+              icon={<CopyOutlined style={{ fontSize: 12, color: '#8c8c8c' }} />}
+              onClick={() => handleCopyNpwp(npwp)}
+            />
+          </Tooltip>
+        </Space>
+      ),
+    },
+    {
+      title: 'PKP',
+      dataIndex: 'isPkp',
+      key: 'isPkp',
+      width: 100,
+      render: (isPkp: boolean) => (
+        <Tag
+          style={{
+            borderRadius: 4,
+            fontSize: 11,
+            background: isPkp ? '#e6f4ff' : '#f5f5f5',
+            border: isPkp ? '1px solid #91caff' : '1px solid #d9d9d9',
+            color: isPkp ? '#0958d9' : '#8c8c8c',
+          }}
+        >
+          {isPkp ? 'PKP' : 'Non-PKP'}
         </Tag>
       ),
     },
     {
-      title: 'Nama Perusahaan Vendor',
-      dataIndex: 'name',
-      key: 'name',
-      render: (name: string) => <Text strong>{name}</Text>,
-    },
-    {
-      title: 'NPWP (Tax ID)',
-      dataIndex: 'taxIdentificationNumber',
-      key: 'taxIdentificationNumber',
-      render: (npwp: string) => <Text copyable>{npwp}</Text>,
-    },
-    {
-      title: 'Status PKP',
-      dataIndex: 'isPkp',
-      key: 'isPkp',
-      render: (isPkp: boolean) =>
-        isPkp ? <Tag color="success">PKP</Tag> : <Tag color="default">Non-PKP</Tag>,
-    },
-    {
-      title: 'Status Vendor',
+      title: 'Status vendor',
       dataIndex: 'status',
       key: 'status',
-      render: (st: string) => <StatusTag status={st} />,
+      width: 130,
+      render: (st: string) => {
+        if (st === 'APPROVED') {
+          return (
+            <Tag color="success" style={{ borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <CheckCircleOutlined /> Disetujui
+            </Tag>
+          );
+        }
+        if (st === 'PROSPECTIVE') {
+          return (
+            <Tag style={{ borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <ClockCircleOutlined /> Prospek
+            </Tag>
+          );
+        }
+        if (st === 'SUSPENDED') {
+          return <Tag color="warning" style={{ borderRadius: 4 }}>Ditangguhkan</Tag>;
+        }
+        return <Tag color="error" style={{ borderRadius: 4 }}>Daftar Hitam</Tag>;
+      },
     },
     {
-      title: 'Rekening Bank Terdaftar & Verifikasi 4-Eyes (R17, R18)',
+      title: 'Rekening bank',
       key: 'bankAccounts',
       render: (_, r) => {
         const accounts = r.bankAccounts || [];
-        if (accounts.length === 0) {
-          return <Text type="secondary">Belum ada rekening</Text>;
-        }
+        const hasPending = accounts.some((b) => b.status.startsWith('PENDING'));
+        const activeCount = accounts.filter((b) => b.status === 'ACTIVE').length;
+
         return (
-          <Space direction="vertical" size={4}>
-            {accounts.map((b) => {
-              const statusColor =
-                b.status === 'ACTIVE'
-                  ? 'success'
-                  : b.status === 'REJECTED'
-                  ? 'error'
-                  : 'warning';
-              return (
-                <div key={b.id} style={{ fontSize: 12, lineHeight: 1.4 }}>
-                  <Space size={6}>
-                    <BankOutlined />
-                    <Text strong>{b.bankName}</Text>
-                    <span>({b.accountNumber})</span>
-                    <Tag color={statusColor} style={{ fontSize: 10, padding: '0 4px' }}>
-                      {b.status === 'ACTIVE'
-                        ? 'Terverifikasi (Active)'
-                        : b.status === 'PENDING_STAGE_1'
-                        ? 'Menunggu Verifikasi 1'
-                        : b.status === 'PENDING_STAGE_2'
-                        ? 'Menunggu Verifikasi 2'
-                        : 'Ditolak'}
-                    </Tag>
-                  </Space>
-                  {b.status.startsWith('PENDING') && (
-                    <Button
-                      type="link"
-                      size="small"
-                      icon={<SafetyCertificateOutlined />}
-                      style={{ padding: '0 4px', fontSize: 11 }}
-                      onClick={() => {
-                        setSelectedVendor(r);
-                        setSelectedBankId(b.id);
-                        verifyBankForm.setFieldsValue({
-                          action: b.status === 'PENDING_STAGE_1' ? 'VERIFY_STAGE_1' : 'VERIFY_STAGE_2',
-                          rejectionReason: '',
-                        });
-                        setIsVerifyBankOpen(true);
-                      }}
-                    >
-                      Verifikasi 4-Eyes
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
-          </Space>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div>
+              {accounts.length === 0 ? (
+                <Text type="secondary" style={{ fontSize: 12 }}>Belum ada rekening</Text>
+              ) : hasPending ? (
+                <Tag color="warning" style={{ borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4, margin: 0 }}>
+                  <ClockCircleOutlined /> Menunggu verifikasi
+                </Tag>
+              ) : (
+                <Tag color="success" style={{ borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4, margin: 0 }}>
+                  <CheckCircleOutlined /> Terverifikasi
+                </Tag>
+              )}
+              <div style={{ fontSize: 11, color: token.colorTextSecondary, marginTop: 2 }}>
+                {accounts.length} rekening{hasPending ? ` · ${activeCount} dari ${accounts.length} terverifikasi` : ''}
+              </div>
+            </div>
+
+            <Popover
+              content={renderBankPopoverContent(r)}
+              trigger="click"
+              placement="bottomRight"
+            >
+              <Tooltip title="Buka detail rekening bank & verifikasi 4-Eyes">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<InfoCircleOutlined style={{ color: '#8c8c8c', fontSize: 15 }} />}
+                />
+              </Tooltip>
+            </Popover>
+          </div>
         );
       },
     },
     {
       title: 'Aksi',
       key: 'actions',
-      width: 220,
+      width: 140,
       render: (_, r) => (
         <Space size="small">
-          <Button
-            size="small"
-            icon={<BankOutlined />}
-            onClick={() => {
-              setSelectedVendor(r);
-              setIsAddBankOpen(true);
-            }}
-          >
-            + Rekening
-          </Button>
-          <Tooltip title="Ubah Status Vendor (R65 Blacklist / Suspend)">
+          <Tooltip title="Ubah Status Vendor (R65)">
             <Button
               size="small"
               icon={<EditOutlined />}
@@ -481,9 +720,17 @@ export const VendorListPage: React.FC = () => {
                 });
                 setIsStatusModalOpen(true);
               }}
-            >
-              Status
-            </Button>
+            />
+          </Tooltip>
+          <Tooltip title="Tambah Rekening Baru">
+            <Button
+              size="small"
+              icon={<BankOutlined />}
+              onClick={() => {
+                setSelectedVendor(r);
+                setIsAddBankOpen(true);
+              }}
+            />
           </Tooltip>
           <Popconfirm
             title="Hapus Vendor?"
@@ -497,7 +744,7 @@ export const VendorListPage: React.FC = () => {
             cancelText="Batal"
             okButtonProps={{ danger: true, loading: deleteVendorMutation.isPending }}
           >
-            <Tooltip title="Hapus Vendor (Hanya jika belum ada transaksi)">
+            <Tooltip title="Hapus Vendor">
               <Button
                 size="small"
                 danger
@@ -511,12 +758,45 @@ export const VendorListPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <PageHeader
-        title="Master Vendor & Rekening Bank (4-Eyes Principle R17–R19)"
-        subtitle="Katalog vendor resmi, status PKP, dan kepatuhan verifikasi rekening ganda (4-Eyes Principle) untuk mencegah Fraudulent Bank Modification."
-        icon={<ShopOutlined style={{ color: token.colorPrimary }} />}
-        extra={
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Header Section (Figma 04 Vendor & Rekening) */}
+      <div>
+        <Breadcrumb
+          items={[{ title: 'Pengadaan' }, { title: 'Vendor & Rekening' }]}
+          style={{ marginBottom: 12, fontSize: 13 }}
+        />
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 16,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 10,
+                backgroundColor: '#e6f4ff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <BankOutlined style={{ color: '#1677ff', fontSize: 22 }} />
+            </div>
+            <div>
+              <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#1f1f1f', fontSize: 20 }}>
+                Vendor & Rekening Bank
+              </Title>
+              <Text type="secondary" style={{ fontSize: 13 }}>
+                Katalog vendor resmi, status PKP, dan verifikasi rekening ganda (4-Eyes Principle) untuk mencegah perubahan rekening yang tidak sah.
+              </Text>
+            </div>
+          </div>
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -524,48 +804,87 @@ export const VendorListPage: React.FC = () => {
           >
             Tambah Vendor Baru
           </Button>
-        }
+        </div>
+      </div>
+
+      {/* Status Filter Tabs (Figma 04) */}
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={statusTabItems}
+        style={{ marginBottom: -8 }}
       />
 
-      <Card>
-        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col xs={24} sm={12} md={8}>
-            <Input
-              placeholder="Cari kode vendor, nama perusahaan, NPWP..."
-              prefix={<SearchOutlined />}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              allowClear
-            />
-          </Col>
-          <Col xs={24} sm={12} md={6}>
+      {/* Main Table Card with Filter Row */}
+      <Card
+        bordered={false}
+        style={{
+          borderRadius: 12,
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+          border: '1px solid #f0f0f0',
+        }}
+      >
+        {/* Filter Bar */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
+            marginBottom: 20,
+          }}
+        >
+          <Space wrap size="middle">
             <Select
-              placeholder="Filter Status Vendor"
-              style={{ width: '100%' }}
-              allowClear
               value={statusFilter}
               onChange={setStatusFilter}
-            >
-              <Select.Option value="APPROVED">Disetujui (Approved)</Select.Option>
-              <Select.Option value="PROSPECTIVE">Prospektif</Select.Option>
-              <Select.Option value="SUSPENDED">Ditangguhkan</Select.Option>
-              <Select.Option value="BLACKLISTED">Blacklist</Select.Option>
-            </Select>
-          </Col>
-        </Row>
+              style={{ width: 170 }}
+              options={[
+                { value: 'ALL', label: 'Semua status vendor' },
+                { value: 'APPROVED', label: 'Disetujui' },
+                { value: 'PROSPECTIVE', label: 'Prospek' },
+                { value: 'SUSPENDED', label: 'Ditangguhkan' },
+                { value: 'BLACKLISTED', label: 'Daftar Hitam' },
+              ]}
+            />
+            <Select
+              value={pkpFilter}
+              onChange={setPkpFilter}
+              style={{ width: 160 }}
+              options={[
+                { value: 'ALL', label: 'Semua status PKP' },
+                { value: 'PKP', label: 'PKP' },
+                { value: 'NON_PKP', label: 'Non-PKP' },
+              ]}
+            />
+          </Space>
 
-        <Table<VendorDisplayItem>
+          <Input
+            placeholder="Cari kode, nama vendor, atau NPWP..."
+            prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            allowClear
+            style={{ width: 280 }}
+          />
+        </div>
+
+        <Table
           columns={columns}
           dataSource={filteredVendors}
           rowKey="id"
-          scroll={{ x: 850 }}
-          pagination={{ pageSize: 10 }}
+          scroll={{ x: 900 }}
+          pagination={{
+            pageSize: 10,
+            showTotal: (total, range) => `Menampilkan ${range[0]}–${range[1]} dari ${total} vendor`,
+          }}
         />
       </Card>
 
-      {/* Modal: Tambah Vendor */}
+      {/* Modal: Tambah Vendor Baru */}
       <Modal
-        title="Daftarkan Master Vendor Baru"
+        title="Daftarkan Rekanan Vendor Baru"
         open={isCreateVendorOpen}
         onCancel={() => {
           setIsCreateVendorOpen(false);
@@ -590,41 +909,38 @@ export const VendorListPage: React.FC = () => {
             <Input placeholder="Contoh: PT Solusi Jaringan Global" />
           </Form.Item>
 
-          <Form.Item name="vendorCode" label="Kode Vendor (Opsional)">
-            <Input placeholder="Contoh: VEND-GLOBAL-004" />
+          <Form.Item
+            name="vendorCode"
+            label="Kode Vendor (Opsional)"
+          >
+            <Input placeholder="Contoh: VEND-SOLUSI-001" />
           </Form.Item>
 
           <Form.Item
             name="taxIdentificationNumber"
-            label={
-              <Space size={6}>
-                <span>Nomor Pokok Wajib Pajak (NPWP)</span>
-                <Tag color="cyan">15/16 Digit</Tag>
-              </Space>
-            }
-            normalize={(val) => maskNpwp(val)}
+            label="Nomor Pokok Wajib Pajak (NPWP 16 Digit / Coretax Format)"
             rules={[
               { required: true, message: 'NPWP wajib diisi' },
               {
-                validator: (_, value) => {
-                  if (!value) return Promise.resolve();
-                  const res = validateNpwp(value);
-                  if (!res.isValid) {
-                    return Promise.reject(new Error(res.message));
+                validator: async (_, value) => {
+                  if (value && !validateNpwp(value)) {
+                    throw new Error('NPWP tidak valid. Format harus 16 digit angka (Coretax) atau 15 digit legacy.');
                   }
-                  return Promise.resolve();
                 },
               },
             ]}
-            tooltip="Mendukung 15 digit (NPWP lama) atau 16 digit (Coretax / NIK). Format titik dan strip ditambahkan secara otomatis."
           >
-            <Input placeholder="Contoh: 01.234.567.8-012.000" maxLength={22} allowClear />
+            <Input placeholder="Contoh: 01.234.567.8-012.000 atau 16 digit" />
           </Form.Item>
 
-          <Form.Item name="isPkp" label="Status Pengusaha Kena Pajak (PKP)" valuePropName="checked">
+          <Form.Item
+            name="isPkp"
+            label="Status Pengusaha Kena Pajak (PKP)"
+            rules={[{ required: true }]}
+          >
             <Select>
-              <Select.Option value={true}>Ya (PKP — Menerbitkan Faktur Pajak)</Select.Option>
-              <Select.Option value={false}>Bukan PKP</Select.Option>
+              <Select.Option value={true}>PKP (Wajib terbitkan Faktur Pajak elektronik)</Select.Option>
+              <Select.Option value={false}>Non-PKP (Bebas PPN / Usaha Mikro)</Select.Option>
             </Select>
           </Form.Item>
         </Form>
@@ -640,42 +956,35 @@ export const VendorListPage: React.FC = () => {
         }}
         onOk={() => addBankForm.submit()}
         confirmLoading={addBankMutation.isPending}
-        okText="Daftarkan Rekening"
+        okText="Ajukan Rekening"
         cancelText="Batal"
       >
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="Prinsip 4-Eyes Check (R18)"
+          description="Rekening baru akan berstatus PENDING_STAGE_1. Diperlukan 2 orang berbeda (Staff AP dan Head of AP) untuk memverifikasi sebelum rekening aktif digunakan untuk transaksi."
+        />
         <Form
           form={addBankForm}
           layout="vertical"
           onFinish={(val) => {
             if (selectedVendor) {
-              const bankCodeMap: Record<string, string> = {
-                BCA: '014',
-                Mandiri: '008',
-                BNI: '009',
-                BRI: '002',
-                CIMB: '022',
-                Permata: '013',
-                Danamon: '011',
-                BSI: '451',
-              };
-              const payload = {
-                ...val,
-                bankCode: bankCodeMap[val.bankName] || '000',
-              };
-              addBankMutation.mutate({ vendorId: selectedVendor.id, payload });
+              addBankMutation.mutate({ vendorId: selectedVendor.id, payload: val });
             }
           }}
         >
           <Form.Item
             name="bankName"
             label="Nama Bank"
-            rules={[{ required: true, message: 'Nama bank wajib diisi' }]}
+            rules={[{ required: true, message: 'Nama bank wajib dipilih' }]}
           >
             <Select placeholder="Pilih Bank">
               <Select.Option value="BCA">Bank Central Asia (BCA)</Select.Option>
               <Select.Option value="Mandiri">Bank Mandiri</Select.Option>
-              <Select.Option value="BNI">Bank Negara Indonesia (BNI)</Select.Option>
               <Select.Option value="BRI">Bank Rakyat Indonesia (BRI)</Select.Option>
+              <Select.Option value="BNI">Bank Negara Indonesia (BNI)</Select.Option>
               <Select.Option value="CIMB">CIMB Niaga</Select.Option>
               <Select.Option value="Permata">Bank Permata</Select.Option>
               <Select.Option value="Danamon">Bank Danamon</Select.Option>
@@ -857,41 +1166,31 @@ export const VendorListPage: React.FC = () => {
           });
         }}
         confirmLoading={updateVendorStatusMutation.isPending}
-        okText="Simpan Status"
+        okText="Perbarui Status"
         cancelText="Batal"
       >
         <Form form={statusForm} layout="vertical">
-          <Alert
-            type="info"
-            showIcon
-            style={{ marginBottom: 16 }}
-            message="Aturan Status Vendor (R65)"
-            description="Vendor dengan status BLACKLISTED atau SUSPENDED akan secara otomatis diblokir dari penerbitan PO baru demi mematuhi kepatuhan pengadaan (R65 Blacklist Lock)."
-          />
           <Form.Item
             name="status"
-            label="Pilih Status Baru"
+            label="Status Operasional Vendor"
             rules={[{ required: true, message: 'Status vendor wajib dipilih' }]}
           >
             <Select>
-              <Select.Option value="APPROVED">
-                <Tag color="success">APPROVED (Aktif / Disetujui)</Tag>
-              </Select.Option>
-              <Select.Option value="PROSPECTIVE">
-                <Tag color="processing">PROSPECTIVE (Calon Rekanan)</Tag>
-              </Select.Option>
-              <Select.Option value="SUSPENDED">
-                <Tag color="warning">SUSPENDED (Ditangguhkan Sementara)</Tag>
-              </Select.Option>
-              <Select.Option value="BLACKLISTED">
-                <Tag color="error">BLACKLISTED (Daftar Hitam - Blokir PO R65)</Tag>
-              </Select.Option>
+              <Select.Option value="APPROVED">Disetujui (Approved) - Aktif untuk PO</Select.Option>
+              <Select.Option value="PROSPECTIVE">Prospektif (Belum Aktif Transaksi)</Select.Option>
+              <Select.Option value="SUSPENDED">Ditangguhkan (Suspended) - Tahan PO Baru</Select.Option>
+              <Select.Option value="BLACKLISTED">Daftar Hitam (Blacklisted) - Blokir Total</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item name="reason" label="Alasan / Catatan Perubahan Status (Opsional)">
+
+          <Form.Item
+            name="reason"
+            label="Alasan Perubahan Status (Audit Trail)"
+            rules={[{ required: true, message: 'Alasan perubahan status wajib diisi' }]}
+          >
             <Input.TextArea
               rows={3}
-              placeholder="Contoh: Terjadi wanprestasi pengiriman barang pada PO-2026-004..."
+              placeholder="Contoh: Penangguhan sementara karena audit kualitas BAST menemukan ketidaksesuaian berulang."
             />
           </Form.Item>
         </Form>
