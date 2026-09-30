@@ -356,18 +356,34 @@ export const AdminFeedbackPage: React.FC = () => {
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'flex-start',
+          alignItems: 'center',
           flexWrap: 'wrap',
           gap: 16,
         }}
       >
-        <div>
-          <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#1f1f1f' }}>
-            Pusat Masukan & Laporan Kendala (Feedback)
-          </Title>
-          <Text type="secondary" style={{ fontSize: 13 }}>
-            Kelola tiket masukan pengguna, laporan kendala teknis (bug report), dan usulan perbaikan sistem NusaProc.
-          </Text>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 10,
+              backgroundColor: '#e6f4ff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <CommentOutlined style={{ color: '#1677ff', fontSize: 22 }} />
+          </div>
+          <div>
+            <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#1f1f1f', fontSize: 20 }}>
+              Pusat Masukan & Laporan Kendala (Feedback)
+            </Title>
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              Kelola tiket masukan pengguna, laporan kendala teknis (bug report), dan usulan perbaikan sistem NusaProc.
+            </Text>
+          </div>
         </div>
 
         <Space wrap>

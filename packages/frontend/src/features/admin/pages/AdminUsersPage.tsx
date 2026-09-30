@@ -445,18 +445,34 @@ export const AdminUsersPage: React.FC = () => {
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'flex-start',
+          alignItems: 'center',
           flexWrap: 'wrap',
           gap: 16,
         }}
       >
-        <div>
-          <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#1f1f1f' }}>
-            Manajemen Pengguna & Hak Akses (US12)
-          </Title>
-          <Text type="secondary" style={{ fontSize: 13 }}>
-            Kelola akun karyawan, hak akses multi-peran (RBAC), spesialisasi pajak, dan status aktivasi pengguna PT Nusanet.
-          </Text>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 10,
+              backgroundColor: '#e6f4ff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <TeamOutlined style={{ color: '#1677ff', fontSize: 22 }} />
+          </div>
+          <div>
+            <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#1f1f1f', fontSize: 20 }}>
+              Manajemen Pengguna & Hak Akses (US12)
+            </Title>
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              Kelola akun karyawan, hak akses multi-peran (RBAC), spesialisasi pajak, dan status aktivasi pengguna PT Nusanet.
+            </Text>
+          </div>
         </div>
 
         <Space wrap>
