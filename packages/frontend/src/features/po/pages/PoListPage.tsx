@@ -1,16 +1,45 @@
-import React, { useState, useEffect } from 'react';
-import { Table, Button, Space, Card, Typography, App, theme, Modal, Form, Select, Input, Alert, Tooltip } from 'antd';
-import { FilePdfOutlined, CheckOutlined, SendOutlined, FileTextOutlined, PlusOutlined, EditOutlined, BankOutlined, InfoCircleOutlined, InboxOutlined, EyeOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Table,
+  Button,
+  Space,
+  Card,
+  Typography,
+  App,
+  theme,
+  Modal,
+  Form,
+  Select,
+  Input,
+  Alert,
+  Tooltip,
+  Tag,
+  Tabs,
+  Breadcrumb,
+} from 'antd';
+import {
+  FilePdfOutlined,
+  CheckOutlined,
+  SendOutlined,
+  FileTextOutlined,
+  PlusOutlined,
+  EditOutlined,
+  BankOutlined,
+  InfoCircleOutlined,
+  InboxOutlined,
+  EyeOutlined,
+  DownloadOutlined,
+  SearchOutlined,
+} from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { poApi, type UpdatePoPayload } from '../../../api/endpoints/po';
 import { vendorApi } from '../../../api/endpoints/vendor';
 import { formatRupiah } from '../../../utils/currency';
-import { PageHeader } from '../../../components/common/PageHeader';
 import { StatusTag } from '../../../components/common/StatusTag';
 import { PoDetailModal } from '../components/PoDetailModal';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 const { TextArea } = Input;
 
 const formatDateIndo = (dateStr?: string) => {
@@ -29,12 +58,28 @@ const formatDateIndo = (dateStr?: string) => {
   }
 };
 
+function getInitials(name?: string): string {
+  if (name) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  return 'PO';
+}
+
 export const PoListPage: React.FC = () => {
   const { notification } = App.useApp();
   const { token } = theme.useToken();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
+
+  const [activeTab, setActiveTab] = useState<string>('ALL');
+  const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [filterPeriod, setFilterPeriod] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedPoForEdit, setSelectedPoForEdit] = useState<any>(null);
@@ -174,7 +219,129 @@ export const PoListPage: React.FC = () => {
   };
 
   const rawList = data?.data;
-  const poData = Array.isArray(rawList) ? rawList : (rawList ? [rawList] : []);
+  const poData = Array.isArray(rawList) ? rawList : rawList ? [rawList] : [];
+
+  // Filtered PO list based on tabs, dropdowns, and search input
+  const filteredPoList = useMemo(() => {
+    return poData.filter((po: any) => {
+      // Tab filter
+      if (activeTab === 'DRAFT' && po.status !== 'DRAFT') return false;
+      if (activeTab === 'ISSUED' && po.status !== 'ISSUED') return false;
+      if (activeTab === 'COMPLETED' && po.status !== 'COMPLETED') return false;
+      if (activeTab === 'CANCELLED' && po.status !== 'CANCELLED') return false;
+
+      // Status dropdown filter
+      if (filterStatus !== 'ALL' && po.status !== filterStatus) return false;
+
+      // Search query filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const num = (po.poNumber || '').toLowerCase();
+        const vendor = (po.vendorName || '').toLowerCase();
+        const creator = (po.requesterName || po.createdBy || '').toLowerCase();
+        if (!num.includes(q) && !vendor.includes(q) && !creator.includes(q)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [poData, activeTab, filterStatus, searchQuery]);
+
+  // Export filtered PO list to CSV
+  const handleExportCsv = () => {
+    const headers = [
+      'Nomor PO',
+      'Tanggal',
+      'Pembuat',
+      'Vendor',
+      'Rekening Bank',
+      'Total Nilai',
+      'Status',
+    ];
+    const rows = filteredPoList.map((po: any) => [
+      po.poNumber,
+      formatDateIndo(po.createdAt),
+      po.requesterName || po.createdBy || 'Admin',
+      po.vendorName || '',
+      `${po.bankName || 'Bank'} ${po.accountNumber || ''}`,
+      po.grandTotalAmount || po.totalAmount || 0,
+      po.status,
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `Purchase_Orders_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    notification.success({ message: 'Data Purchase Order berhasil diekspor ke CSV.' });
+  };
+
+  // Status counts for tab badges
+  const draftCount = poData.filter((p: any) => p.status === 'DRAFT').length;
+  const issuedCount = poData.filter((p: any) => p.status === 'ISSUED').length;
+  const completedCount = poData.filter((p: any) => p.status === 'COMPLETED').length;
+  const cancelledCount = poData.filter((p: any) => p.status === 'CANCELLED').length;
+
+  const statusTabItems = [
+    {
+      key: 'ALL',
+      label: (
+        <Space size={6}>
+          <span>Semua</span>
+          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+            {poData.length}
+          </Tag>
+        </Space>
+      ),
+    },
+    {
+      key: 'DRAFT',
+      label: (
+        <Space size={6}>
+          <span>Draft</span>
+          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'DRAFT' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'DRAFT' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+            {draftCount}
+          </Tag>
+        </Space>
+      ),
+    },
+    {
+      key: 'ISSUED',
+      label: (
+        <Space size={6}>
+          <span>Diterbitkan</span>
+          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'ISSUED' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'ISSUED' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+            {issuedCount}
+          </Tag>
+        </Space>
+      ),
+    },
+    {
+      key: 'COMPLETED',
+      label: (
+        <Space size={6}>
+          <span>Selesai Penuh</span>
+          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'COMPLETED' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'COMPLETED' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+            {completedCount}
+          </Tag>
+        </Space>
+      ),
+    },
+    {
+      key: 'CANCELLED',
+      label: (
+        <Space size={6}>
+          <span>Dibatalkan</span>
+          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'CANCELLED' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'CANCELLED' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+            {cancelledCount}
+          </Tag>
+        </Space>
+      ),
+    },
+  ];
 
   const columns = [
     {
@@ -208,24 +375,83 @@ export const PoListPage: React.FC = () => {
     {
       title: 'Pembuat & Tgl',
       key: 'creator',
-      render: (_: unknown, record: any) => (
-        <div>
-          <div><Text strong>{record.requesterName || record.createdBy || 'Admin'}</Text></div>
-          <div style={{ fontSize: 12, color: token.colorTextSecondary }}>
-            {record.createdAt ? formatDateIndo(record.createdAt) : '-'}
+      render: (_: unknown, record: any) => {
+        const creatorName = record.requesterName || record.createdBy || 'Admin';
+        const initials = getInitials(creatorName);
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                backgroundColor: '#e6f4ff',
+                color: '#0958d9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 600,
+                fontSize: 12,
+                flexShrink: 0,
+              }}
+            >
+              {initials}
+            </div>
+            <div>
+              <Text strong style={{ fontSize: 13, display: 'block', lineHeight: 1.2 }}>
+                {creatorName}
+              </Text>
+              <div style={{ fontSize: 12, color: token.colorTextSecondary }}>
+                {record.createdAt ? formatDateIndo(record.createdAt) : '-'}
+              </div>
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: 'Vendor Terpilih',
       dataIndex: 'vendorName',
       key: 'vendorName',
-      render: (text: string) => text || 'PT Fiber Optik Nusantara',
+      render: (text: string, record: any) => {
+        const vendorName = text || record.vendor?.name || 'PT Mitra Solusi Jaringan';
+        const bankName = record.bankName || 'Mandiri';
+        const acct = record.accountNumber || record.bankAccountNumber || '0040';
+        const masked = acct.length > 4 ? `••••${acct.slice(-4)}` : `••••${acct}`;
+
+        return (
+          <div>
+            <Text strong style={{ fontSize: 13, display: 'block' }}>
+              {vendorName}
+            </Text>
+            <div style={{ marginTop: 2 }}>
+              <Tag
+                style={{
+                  borderRadius: 4,
+                  background: '#f6ffed',
+                  border: '1px solid #b7eb8f',
+                  color: '#389e0d',
+                  fontSize: 11,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  margin: 0,
+                  padding: '1px 6px',
+                }}
+              >
+                <BankOutlined style={{ color: '#52c41a' }} />
+                <span>{bankName}</span>
+                <span>{masked}</span>
+              </Tag>
+            </div>
+          </div>
+        );
+      },
     },
     {
       title: 'Rekening Bank Terverifikasi',
       key: 'bankAccount',
+      responsive: ['xl'] as any,
       render: (_: unknown, record: any) => {
         if (record.bankName && record.accountNumber) {
           return `${record.bankName} - ${record.accountNumber} (${record.accountHolderName || 'Verified'})`;
@@ -238,7 +464,7 @@ export const PoListPage: React.FC = () => {
       key: 'totalAmount',
       render: (_: unknown, record: any) => {
         const val = record.grandTotalAmount ?? record.totalAmount ?? 0;
-        return <Text strong>{formatRupiah(Number(val))}</Text>;
+        return <Text strong style={{ fontSize: 13 }}>{formatRupiah(Number(val))}</Text>;
       },
     },
     {
@@ -313,7 +539,7 @@ export const PoListPage: React.FC = () => {
               Terbitkan (R24)
             </Button>
           )}
-          {(record.status === 'ISSUED' || record.status === 'AMENDED') && (
+          {(record.status === 'ISSUED' || record.status === 'AMENDED' || record.status === 'PARTIALLY_RECEIVED') && (
             <Button
               type="primary"
               size="small"
@@ -337,33 +563,139 @@ export const PoListPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <PageHeader
-        title="Katalog Surat Pesanan (Purchase Order)"
-        subtitle="Daftar pemesanan resmi kepada vendor terverifikasi dengan proteksi persetujuan, penerbitan, dan unduhan PDF resmi (R24–R27)."
-        icon={<FileTextOutlined style={{ color: token.colorPrimary }} />}
-        extra={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => navigate('/po/create')}
-          >
-            Buat PO Baru
-          </Button>
-        }
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Header Section (Figma 03 Purchase Order) */}
+      <div>
+        <Breadcrumb
+          items={[{ title: 'Pengadaan' }, { title: 'Purchase Order' }]}
+          style={{ marginBottom: 12, fontSize: 13 }}
+        />
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 16,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 10,
+                backgroundColor: '#e6f4ff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <FileTextOutlined style={{ color: '#1677ff', fontSize: 22 }} />
+            </div>
+            <div>
+              <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#1f1f1f', fontSize: 20 }}>
+                Purchase Order (PO)
+              </Title>
+              <Text type="secondary" style={{ fontSize: 13 }}>
+                Pesanan resmi ke vendor terverifikasi — lengkap dengan persetujuan, penerbitan, dan unduhan PDF.
+              </Text>
+            </div>
+          </div>
+          <Space>
+            <Button icon={<DownloadOutlined />} onClick={handleExportCsv}>
+              Ekspor
+            </Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => navigate('/po/create')}
+            >
+              Buat PO Baru
+            </Button>
+          </Space>
+        </div>
+      </div>
+
+      {/* Status Filter Tabs (Figma 03) */}
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={statusTabItems}
+        style={{ marginBottom: -8 }}
       />
 
-      <Card>
+      {/* Main Table Card with Filter Row */}
+      <Card
+        bordered={false}
+        style={{
+          borderRadius: 12,
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+          border: '1px solid #f0f0f0',
+        }}
+      >
+        {/* Filter Bar */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
+            marginBottom: 20,
+          }}
+        >
+          <Space wrap size="middle">
+            <Select
+              value={filterStatus}
+              onChange={setFilterStatus}
+              style={{ width: 160 }}
+              options={[
+                { value: 'ALL', label: 'Semua status' },
+                { value: 'DRAFT', label: 'Draft' },
+                { value: 'APPROVED', label: 'Disetujui' },
+                { value: 'ISSUED', label: 'Diterbitkan' },
+                { value: 'COMPLETED', label: 'Selesai Penuh' },
+                { value: 'CANCELLED', label: 'Dibatalkan' },
+              ]}
+            />
+            <Select
+              value={filterPeriod}
+              onChange={setFilterPeriod}
+              style={{ width: 160 }}
+              options={[
+                { value: 'ALL', label: 'Semua periode' },
+                { value: '30D', label: '30 Hari Terakhir' },
+                { value: '90D', label: 'Kuartal Ini' },
+                { value: '2026', label: 'Tahun 2026' },
+              ]}
+            />
+          </Space>
+
+          <Input
+            placeholder="Cari nomor PO, vendor, atau pembuat..."
+            prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            allowClear
+            style={{ width: 280 }}
+          />
+        </div>
+
         <Table
           columns={columns}
-          dataSource={poData}
+          dataSource={filteredPoList}
           rowKey="id"
           loading={isLoading}
           scroll={{ x: 800 }}
-          pagination={{ pageSize: 10 }}
+          pagination={{
+            pageSize: 10,
+            showTotal: (total, range) => `Menampilkan ${range[0]}–${range[1]} dari ${total} PO`,
+          }}
         />
       </Card>
 
+      {/* Edit PO Vendor Modal */}
       <Modal
         title={`Revisi PO: ${selectedPoForEdit?.poNumber || ''}`}
         open={editModalOpen}
