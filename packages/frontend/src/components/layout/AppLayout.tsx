@@ -244,22 +244,24 @@ export const AppLayout: React.FC = () => {
                 backgroundColor: '#fff',
               }}
             >
-              <Button
-                type="text"
-                icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                onClick={() => setCollapsed(!collapsed)}
-                style={{
-                  width: '100%',
-                  textAlign: collapsed ? 'center' : 'left',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  fontSize: 13,
-                  color: token.colorTextSecondary,
-                }}
-              >
-                {!collapsed && <span>Ciutkan menu</span>}
-              </Button>
+              <Tooltip title={collapsed ? 'Perluas menu' : undefined} placement="right">
+                <Button
+                  type="text"
+                  icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                  onClick={() => setCollapsed(!collapsed)}
+                  style={{
+                    width: '100%',
+                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    fontSize: 13,
+                    color: token.colorTextSecondary,
+                  }}
+                >
+                  {!collapsed && <span>Ciutkan menu</span>}
+                </Button>
+              </Tooltip>
             </div>
           </Sider>
         )}
