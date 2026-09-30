@@ -38,6 +38,59 @@ export interface AmendPoPayload {
   updatedTermsAndConditions?: string;
 }
 
+export interface PoItemDetail {
+  id: string;
+  poId: string;
+  prItemId: string;
+  lineNumber: number;
+  itemName: string;
+  quantityOrdered: number;
+  quantityReceived?: number;
+  quantityInvoiced?: number;
+  uom: string;
+  unitPrice: number;
+  subtotal: number;
+}
+
+export interface PoAmendmentDetail {
+  id: string;
+  poId: string;
+  amendmentNumber: number;
+  changeSummary: string;
+  previousSnapshot?: Record<string, unknown>;
+  requestedBy?: string;
+  approvedBy?: string;
+  createdAt: string;
+}
+
+export interface PoDetailData {
+  id: string;
+  poNumber: string;
+  vendorId: string;
+  vendorName?: string;
+  vendorBankAccountId: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountHolderName?: string;
+  paymentTermType: string;
+  versionNumber: number;
+  status: string;
+  subtotalAmount: number;
+  taxAmount: number;
+  grandTotalAmount: number;
+  termsAndConditions?: string;
+  createdBy?: string;
+  requesterName?: string;
+  requesterEmail?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  issuedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  items?: PoItemDetail[];
+  amendments?: PoAmendmentDetail[];
+}
+
 export const poApi = {
   list: (params?: { status?: string }) =>
     apiClient.get('/purchase-orders', { params }).then((res) => res.data),

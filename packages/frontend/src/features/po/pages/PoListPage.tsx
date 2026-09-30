@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Table, Button, Space, Card, Typography, App, theme, Modal, Form, Select, Input, Alert, Tooltip } from 'antd';
-import { FilePdfOutlined, CheckOutlined, SendOutlined, FileTextOutlined, PlusOutlined, EditOutlined, BankOutlined, InfoCircleOutlined, InboxOutlined } from '@ant-design/icons';
+import { FilePdfOutlined, CheckOutlined, SendOutlined, FileTextOutlined, PlusOutlined, EditOutlined, BankOutlined, InfoCircleOutlined, InboxOutlined, EyeOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { poApi, type UpdatePoPayload } from '../../../api/endpoints/po';
@@ -8,6 +8,7 @@ import { vendorApi } from '../../../api/endpoints/vendor';
 import { formatRupiah } from '../../../utils/currency';
 import { PageHeader } from '../../../components/common/PageHeader';
 import { StatusTag } from '../../../components/common/StatusTag';
+import { PoDetailModal } from '../components/PoDetailModal';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -38,6 +39,8 @@ export const PoListPage: React.FC = () => {
   const [selectedPoForEdit, setSelectedPoForEdit] = useState<any>(null);
   const [vendorBankAccounts, setVendorBankAccounts] = useState<any[]>([]);
   const [editForm] = Form.useForm();
+  const [selectedDetailPoId, setSelectedDetailPoId] = useState<string | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
 
   // Fetch PO list from backend
   const { data, isLoading } = useQuery({
@@ -168,7 +171,29 @@ export const PoListPage: React.FC = () => {
       title: 'Nomor PO',
       dataIndex: 'poNumber',
       key: 'poNumber',
-      render: (text: string) => <Text strong style={{ color: token.colorPrimary }}>{text}</Text>,
+      render: (text: string, record: any) => (
+        <Tooltip title="Klik untuk melihat rincian lengkap dokumen PO">
+          <Button
+            type="link"
+            style={{
+              padding: 0,
+              fontWeight: 600,
+              height: 'auto',
+              color: token.colorPrimary,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+            onClick={() => {
+              setSelectedDetailPoId(record.id);
+              setDetailModalOpen(true);
+            }}
+          >
+            <FileTextOutlined />
+            <span>{text}</span>
+          </Button>
+        </Tooltip>
+      ),
     },
     {
       title: 'Pembuat & Tgl',
@@ -224,6 +249,16 @@ export const PoListPage: React.FC = () => {
       key: 'action',
       render: (_: unknown, record: any) => (
         <Space size="small">
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => {
+              setSelectedDetailPoId(record.id);
+              setDetailModalOpen(true);
+            }}
+          >
+            Detail
+          </Button>
           {record.status === 'DRAFT' && (
             <Button
               size="small"
@@ -408,6 +443,19 @@ export const PoListPage: React.FC = () => {
           </div>
         </Form>
       </Modal>
+
+      {/* PO Detail Modal */}
+      <PoDetailModal
+        open={detailModalOpen}
+        poId={selectedDetailPoId}
+        onClose={() => {
+          setDetailModalOpen(false);
+          setSelectedDetailPoId(null);
+        }}
+        onStatusUpdated={() => {
+          queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
+        }}
+      />
     </div>
   );
 };
