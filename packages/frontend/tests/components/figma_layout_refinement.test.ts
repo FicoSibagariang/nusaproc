@@ -67,4 +67,27 @@ describe('Figma UI Refinement v1: Layout, Header, Grouped Navigation & Safe Role
     // Top item should be Dashboard
     expect(adminGroups[0]?.key).toBe('/dashboard');
   });
+
+  it('verifies AppLayout pins the collapse menu footer button at the bottom across all screen heights', () => {
+    const content = readFileSync(layoutPath, 'utf-8');
+
+    // Ant Design sider-children flex override
+    expect(content).toContain('.app-layout-sider .ant-layout-sider-children');
+    expect(content).toContain('display: flex !important;');
+    expect(content).toContain('flex-direction: column !important;');
+
+    // Inner scrollable and pinned footer container
+    expect(content).toContain("flex: 1");
+    expect(content).toContain("minHeight: 0");
+    expect(content).toContain("overflowY: 'auto'");
+    expect(content).toContain("flexShrink: 0");
+    expect(content).toContain("borderTop: '1px solid #f0f0f0'");
+
+    // Toggle button and tooltips
+    expect(content).toContain('Ciutkan menu');
+    expect(content).toContain('Perluas menu');
+    expect(content).toContain('MenuFoldOutlined');
+    expect(content).toContain('MenuUnfoldOutlined');
+  });
 });
+

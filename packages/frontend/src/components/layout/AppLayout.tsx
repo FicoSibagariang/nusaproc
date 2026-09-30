@@ -203,9 +203,20 @@ export const AppLayout: React.FC = () => {
       </Header>
 
       <Layout>
+        {/* Style override to ensure Ant Design Sider children wrap as flex-column and pin the collapse button */}
+        <style>{`
+          .app-layout-sider .ant-layout-sider-children {
+            display: flex !important;
+            flex-direction: column !important;
+            height: 100% !important;
+            overflow: hidden !important;
+          }
+        `}</style>
+
         {/* Desktop Sidebar Sider (Figma 01 & 01b) */}
         {!isMobile && (
           <Sider
+            className="app-layout-sider"
             width={240}
             collapsed={collapsed}
             onCollapse={(value) => setCollapsed(value)}
@@ -220,48 +231,64 @@ export const AppLayout: React.FC = () => {
               top: 64,
               left: 0,
               borderRight: '1px solid #e8e8e8',
-              display: 'flex',
-              flexDirection: 'column',
               backgroundColor: '#fff',
             }}
           >
-            {/* Scrollable Menu Items */}
-            <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 16 }}>
-              <Menu
-                mode="inline"
-                selectedKeys={getSelectedMenuKeys(location.pathname)}
-                items={groupedMenuItems}
-                onClick={({ key }) => navigate(key)}
-                style={{ borderRight: 0, paddingTop: 8 }}
-              />
-            </div>
-
-            {/* Custom Sider Footer: Ciutkan Menu (Figma 01 & 01b) */}
             <div
               style={{
-                borderTop: '1px solid #f0f0f0',
-                padding: '10px 12px',
-                backgroundColor: '#fff',
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+                overflow: 'hidden',
               }}
             >
-              <Tooltip title={collapsed ? 'Perluas menu' : undefined} placement="right">
-                <Button
-                  type="text"
-                  icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                  onClick={() => setCollapsed(!collapsed)}
-                  style={{
-                    width: '100%',
-                    justifyContent: collapsed ? 'center' : 'flex-start',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    fontSize: 13,
-                    color: token.colorTextSecondary,
-                  }}
-                >
-                  {!collapsed && <span>Ciutkan menu</span>}
-                </Button>
-              </Tooltip>
+              {/* Scrollable Menu Items */}
+              <div
+                style={{
+                  flex: 1,
+                  minHeight: 0,
+                  overflowY: 'auto',
+                  overflowX: 'hidden',
+                  paddingBottom: 16,
+                }}
+              >
+                <Menu
+                  mode="inline"
+                  selectedKeys={getSelectedMenuKeys(location.pathname)}
+                  items={groupedMenuItems}
+                  onClick={({ key }) => navigate(key)}
+                  style={{ borderRight: 0, paddingTop: 8 }}
+                />
+              </div>
+
+              {/* Custom Sider Footer: Ciutkan Menu (Figma 01 & 01b) */}
+              <div
+                style={{
+                  flexShrink: 0,
+                  borderTop: '1px solid #f0f0f0',
+                  padding: '10px 12px',
+                  backgroundColor: '#fff',
+                }}
+              >
+                <Tooltip title={collapsed ? 'Perluas menu' : undefined} placement="right">
+                  <Button
+                    type="text"
+                    icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                    onClick={() => setCollapsed(!collapsed)}
+                    style={{
+                      width: '100%',
+                      justifyContent: collapsed ? 'center' : 'flex-start',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      fontSize: 13,
+                      color: token.colorTextSecondary,
+                    }}
+                  >
+                    {!collapsed && <span>Ciutkan menu</span>}
+                  </Button>
+                </Tooltip>
+              </div>
             </div>
           </Sider>
         )}
