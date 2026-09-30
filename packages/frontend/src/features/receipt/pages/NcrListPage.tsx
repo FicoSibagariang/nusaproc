@@ -1,39 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Table,
   Tag,
   Card,
   Typography,
-  Row,
-  Col,
   Input,
   Select,
   Space,
-  Badge,
   Button,
   Modal,
   Alert,
   Tooltip,
   App,
   theme,
+  Tabs,
+  Breadcrumb,
 } from 'antd';
 import {
   WarningOutlined,
   SearchOutlined,
-  AuditOutlined,
   CheckCircleOutlined,
   ShoppingCartOutlined,
-  FileDoneOutlined,
+  InboxOutlined,
 } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { receiptApi } from '../../../api/endpoints/receipt';
-import { PageHeader } from '../../../components/common/PageHeader';
-import { StatusTag } from '../../../components/common/StatusTag';
-import { formatDateTime } from '../../../utils/date';
+import { formatDate, formatDateTime } from '../../../utils/date';
 import { BastDetailModal } from '../components/BastDetailModal';
 
-const { Text, Paragraph } = Typography;
+const { Text, Paragraph, Title } = Typography;
 
 export interface NcrItem {
   id: string;
@@ -57,8 +53,9 @@ export const NcrListPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const [activeTab, setActiveTab] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<boolean | undefined>(undefined);
 
   // States for viewing related BAST
   const [selectedGrId, setSelectedGrId] = useState<string | null>(null);
@@ -70,24 +67,49 @@ export const NcrListPage: React.FC = () => {
   const [resolvingSubmitting, setResolvingSubmitting] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['ncrs', statusFilter],
-    queryFn: () => receiptApi.listNcrs({ isResolved: statusFilter }),
+    queryKey: ['ncrs'],
+    queryFn: () => receiptApi.listNcrs(),
   });
 
   const rawNcrs: NcrItem[] = data?.data || [];
 
-  const filteredNcrs = rawNcrs.filter((ncr) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      ncr.ncrNumber.toLowerCase().includes(term) ||
-      (ncr.poNumber && ncr.poNumber.toLowerCase().includes(term)) ||
-      (ncr.grNumber && ncr.grNumber.toLowerCase().includes(term)) ||
-      ncr.poId.toLowerCase().includes(term) ||
-      ncr.description.toLowerCase().includes(term) ||
-      ncr.actionRequired.toLowerCase().includes(term)
-    );
-  });
+  const openCount = rawNcrs.filter((n) => !n.isResolved).length;
+  const resolvedCount = rawNcrs.filter((n) => n.isResolved).length;
+
+  const filteredNcrs = useMemo(() => {
+    return rawNcrs.filter((ncr) => {
+      // Tab filter
+      if (activeTab === 'OPEN' && ncr.isResolved) return false;
+      if (activeTab === 'RESOLVED' && !ncr.isResolved) return false;
+
+      // Status dropdown filter
+      if (statusFilter === 'OPEN' && ncr.isResolved) return false;
+      if (statusFilter === 'RESOLVED' && !ncr.isResolved) return false;
+
+      // Search term filter
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase().trim();
+        const ncrNum = (ncr.ncrNumber || '').toLowerCase();
+        const poNum = (ncr.poNumber || '').toLowerCase();
+        const grNum = (ncr.grNumber || '').toLowerCase();
+        const poId = (ncr.poId || '').toLowerCase();
+        const desc = (ncr.description || '').toLowerCase();
+        const action = (ncr.actionRequired || '').toLowerCase();
+        if (
+          !ncrNum.includes(term) &&
+          !poNum.includes(term) &&
+          !grNum.includes(term) &&
+          !poId.includes(term) &&
+          !desc.includes(term) &&
+          !action.includes(term)
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [rawNcrs, activeTab, statusFilter, searchTerm]);
 
   const handleOpenResolveModal = (ncr: NcrItem) => {
     setResolvingNcr(ncr);
@@ -113,108 +135,186 @@ export const NcrListPage: React.FC = () => {
     }
   };
 
-  const columns = [
+  const statusTabItems = [
     {
-      title: 'Nomor Tiket NCR',
-      dataIndex: 'ncrNumber',
-      key: 'ncrNumber',
-      width: 160,
-      render: (ncrNumber: string) => (
-        <Space>
-          <WarningOutlined style={{ color: token.colorWarning, fontSize: 16 }} />
-          <Text strong style={{ color: token.colorWarning }}>
-            {ncrNumber}
-          </Text>
+      key: 'ALL',
+      label: (
+        <Space size={6}>
+          <span>Semua</span>
+          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+            {rawNcrs.length}
+          </Tag>
         </Space>
       ),
     },
     {
-      title: 'Dokumen Terkait',
+      key: 'OPEN',
+      label: (
+        <Space size={6}>
+          <span>Terbuka</span>
+          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'OPEN' ? '#fff2f0' : '#f5f5f5', color: activeTab === 'OPEN' ? '#cf1322' : '#8c8c8c', border: 'none' }}>
+            {openCount}
+          </Tag>
+        </Space>
+      ),
+    },
+    {
+      key: 'RESOLVED',
+      label: (
+        <Space size={6}>
+          <span>Selesai</span>
+          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'RESOLVED' ? '#f6ffed' : '#f5f5f5', color: activeTab === 'RESOLVED' ? '#389e0d' : '#8c8c8c', border: 'none' }}>
+            {resolvedCount}
+          </Tag>
+        </Space>
+      ),
+    },
+  ];
+
+  const columns = [
+    {
+      title: 'Nomor tiket NCR',
+      dataIndex: 'ncrNumber',
+      key: 'ncrNumber',
+      width: 170,
+      render: (ncrNumber: string, record: NcrItem) => (
+        <Tooltip title="Klik untuk meninjau atau menyelesaikan tiket ketidaksesuaian">
+          <Button
+            type="link"
+            style={{
+              padding: 0,
+              height: 'auto',
+              fontWeight: 600,
+              color: token.colorPrimary,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+            onClick={() => handleOpenResolveModal(record)}
+          >
+            <WarningOutlined style={{ color: record.isResolved ? '#52c41a' : '#ff4d4f' }} />
+            <span>{ncrNumber}</span>
+          </Button>
+        </Tooltip>
+      ),
+    },
+    {
+      title: 'Dokumen terkait',
       key: 'relatedDocs',
-      width: 180,
+      width: 190,
       render: (_: unknown, record: NcrItem) => (
         <Space direction="vertical" size={2}>
           <div>
             <Button
               type="link"
               size="small"
-              icon={<ShoppingCartOutlined />}
-              style={{ padding: 0, height: 'auto', fontSize: 12 }}
+              icon={<ShoppingCartOutlined style={{ color: '#1677ff' }} />}
+              style={{ padding: 0, height: 'auto', fontSize: 12, fontWeight: 500 }}
               onClick={() => navigate(`/po?poId=${record.poId}`)}
             >
-              PO: {record.poNumber || `${record.poId.slice(0, 8)}...`}
+              {record.poNumber || `PO-${record.poId.slice(0, 8)}`}
             </Button>
           </div>
           <div>
             <Button
               type="link"
               size="small"
-              icon={<FileDoneOutlined />}
-              style={{ padding: 0, height: 'auto', fontSize: 12, color: token.colorInfo }}
+              icon={<InboxOutlined style={{ color: '#52c41a' }} />}
+              style={{ padding: 0, height: 'auto', fontSize: 12, color: '#52c41a', fontWeight: 500 }}
               onClick={() => {
                 setSelectedGrId(record.grId);
                 setBastModalOpen(true);
               }}
             >
-              BAST: {record.grNumber || `${record.grId.slice(0, 8)}...`}
+              {record.grNumber || `GR-${record.grId.slice(0, 8)}`}
             </Button>
           </div>
         </Space>
       ),
     },
     {
-      title: 'Deskripsi Masalah & Ketidaksesuaian',
+      title: 'Deskripsi masalah',
       dataIndex: 'description',
       key: 'description',
       ellipsis: true,
       render: (desc: string) => (
-        <Paragraph style={{ margin: 0 }} ellipsis={{ rows: 2, tooltip: desc }}>
+        <Paragraph style={{ margin: 0, fontSize: 13 }} ellipsis={{ rows: 2, tooltip: desc }}>
           {desc}
         </Paragraph>
       ),
     },
     {
-      title: 'Tindakan yang Diperlukan',
+      title: 'Tindakan yang diperlukan',
       dataIndex: 'actionRequired',
       key: 'actionRequired',
       ellipsis: true,
       render: (action: string) => (
         <Text style={{ color: token.colorTextSecondary, fontSize: 13 }}>
-          {action}
+          {action || 'Penggantian barang / retur atau perbaikan garansi'}
         </Text>
       ),
     },
     {
-      title: 'Status Tiket',
+      title: 'Status',
       dataIndex: 'isResolved',
       key: 'isResolved',
-      width: 160,
-      render: (resolved: boolean, record: NcrItem) => (
-        <Space direction="vertical" size={0}>
-          <StatusTag status={resolved} category="ncr" />
-          {resolved && record.resolvedByName && (
-            <Text type="secondary" style={{ fontSize: 11 }}>
-              Oleh: {record.resolvedByName}
-            </Text>
-          )}
-        </Space>
+      width: 120,
+      render: (resolved: boolean) => (
+        resolved ? (
+          <Tag
+            style={{
+              borderRadius: 4,
+              background: '#f6ffed',
+              border: '1px solid #b7eb8f',
+              color: '#389e0d',
+              fontSize: 12,
+              padding: '2px 8px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <CheckCircleOutlined />
+            <span>Selesai</span>
+          </Tag>
+        ) : (
+          <Tag
+            style={{
+              borderRadius: 4,
+              background: '#fff2f0',
+              border: '1px solid #ffccc7',
+              color: '#ff4d4f',
+              fontSize: 12,
+              padding: '2px 8px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <WarningOutlined />
+            <span>Terbuka</span>
+          </Tag>
+        )
       ),
     },
     {
-      title: 'Tanggal Pencatatan',
+      title: 'Dicatat',
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 140,
       render: (dateStr: string) => (
-        <Text style={{ fontSize: 12 }}>
-          {formatDateTime(dateStr)}
-        </Text>
+        <div>
+          <div style={{ fontSize: 12 }}>{formatDate(dateStr)}</div>
+          <div style={{ fontSize: 11, color: token.colorTextSecondary }}>
+            {new Date(dateStr).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
+          </div>
+        </div>
       ),
     },
     {
       title: 'Aksi',
       key: 'action',
-      width: 130,
+      width: 110,
       align: 'center' as const,
       render: (_: unknown, record: NcrItem) => (
         record.isResolved ? (
@@ -227,66 +327,142 @@ export const NcrListPage: React.FC = () => {
             size="small"
             icon={<CheckCircleOutlined />}
             onClick={() => handleOpenResolveModal(record)}
-            style={{ backgroundColor: token.colorSuccess, borderColor: token.colorSuccess }}
+            style={{ borderRadius: 6 }}
           >
-            Resolve
+            Selesaikan
           </Button>
         )
       ),
     },
   ];
 
-  const openCount = rawNcrs.filter((n) => !n.isResolved).length;
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <PageHeader
-        title="Laporan Ketidaksesuaian Barang / Non-Conformance Reports (NCR) (R30, US5)"
-        subtitle="Daftar insiden barang rusak, ditolak, atau tidak sesuai spesifikasi yang dicatat saat penerimaan BAST oleh Gudang / Pemohon."
-        icon={<AuditOutlined style={{ color: token.colorWarning }} />}
-        extra={
-          <Badge count={openCount} overflowCount={99}>
-            <Tag color="warning" style={{ padding: '4px 12px', fontSize: 13 }}>
-              Tiket Open: {openCount}
-            </Tag>
-          </Badge>
-        }
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Header Section (Figma 06 NCR) */}
+      <div>
+        <Breadcrumb
+          items={[{ title: 'Penerimaan & Kualitas' }, { title: 'NCR' }]}
+          style={{ marginBottom: 12, fontSize: 13 }}
+        />
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 16,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 10,
+                backgroundColor: '#e6f4ff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <WarningOutlined style={{ color: '#1677ff', fontSize: 22 }} />
+            </div>
+            <div>
+              <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#1f1f1f', fontSize: 20 }}>
+                Laporan Ketidaksesuaian (NCR)
+              </Title>
+              <Text type="secondary" style={{ fontSize: 13 }}>
+                Insiden barang rusak, ditolak, atau tidak sesuai spesifikasi yang dicatat saat penerimaan BAST oleh Gudang atau Pemohon.
+              </Text>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Alert Banner when Open NCRs exist (Figma 06) */}
+      {openCount > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '12px 18px',
+            backgroundColor: '#fffbe6',
+            border: '1px solid #ffe58f',
+            borderRadius: 8,
+          }}
+        >
+          <WarningOutlined style={{ color: '#faad14', fontSize: 20 }} />
+          <div>
+            <Text strong style={{ color: '#d46b08', fontSize: 14, display: 'block' }}>
+              {openCount} tiket NCR masih terbuka
+            </Text>
+            <Text style={{ color: '#8c6b2d', fontSize: 13 }}>
+              Barang yang rusak atau tidak sesuai perlu ditindaklanjuti sebelum tiket dapat diselesaikan.
+            </Text>
+          </div>
+        </div>
+      )}
+
+      {/* Status Filter Tabs (Figma 06) */}
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={statusTabItems}
+        style={{ marginBottom: -8 }}
       />
 
-      <Card>
-        <Row gutter={[16, 16]}>
-          <Col xs={24} sm={12} md={8}>
-            <Input
-              placeholder="Cari nomor NCR, PO, BAST, deskripsi..."
-              prefix={<SearchOutlined />}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              allowClear
-            />
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Select
-              placeholder="Status Resolusi"
-              style={{ width: '100%' }}
-              allowClear
-              value={statusFilter}
-              onChange={setStatusFilter}
-            >
-              <Select.Option value={false}>Open / Dalam Investigasi</Select.Option>
-              <Select.Option value={true}>Selesai / Resolved</Select.Option>
-            </Select>
-          </Col>
-        </Row>
-      </Card>
+      {/* Main Table Card with Filter Row */}
+      <Card
+        bordered={false}
+        style={{
+          borderRadius: 12,
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+          border: '1px solid #f0f0f0',
+        }}
+      >
+        {/* Filter Bar */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
+            marginBottom: 20,
+          }}
+        >
+          <Select
+            value={statusFilter}
+            onChange={setStatusFilter}
+            style={{ width: 180 }}
+            options={[
+              { value: 'ALL', label: 'Semua status resolusi' },
+              { value: 'OPEN', label: 'Terbuka' },
+              { value: 'RESOLVED', label: 'Selesai / Resolved' },
+            ]}
+          />
 
-      <Card>
+          <Input
+            placeholder="Cari nomor NCR, PO, BAST, atau deskripsi..."
+            prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            allowClear
+            style={{ width: 300 }}
+          />
+        </div>
+
         <Table
           columns={columns}
           dataSource={filteredNcrs}
           rowKey="id"
           loading={isLoading}
           scroll={{ x: 900 }}
-          pagination={{ pageSize: 10, showTotal: (total) => `Total ${total} laporan NCR` }}
+          pagination={{
+            pageSize: 10,
+            showTotal: (total) => `Total ${total} laporan NCR`,
+          }}
         />
       </Card>
 
