@@ -14,9 +14,9 @@ import {
   App,
   theme,
   Tabs,
-  Row,
-  Col,
   Popconfirm,
+  Breadcrumb,
+  Tooltip,
 } from 'antd';
 import {
   BankOutlined,
@@ -26,6 +26,8 @@ import {
   SearchOutlined,
   CheckCircleOutlined,
   StopOutlined,
+  DownloadOutlined,
+  EnvironmentOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -38,13 +40,13 @@ import {
   type CreateDivisionPayload,
   type UpdateDivisionPayload,
 } from '../../../api';
-import { PageHeader } from '../../../components/common/PageHeader';
 import { StatusTag } from '../../../components/common/StatusTag';
 
-const { Text, Paragraph } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
 export const AdminOrganizationPage: React.FC = () => {
   const { message } = App.useApp();
+  const { token } = theme.useToken();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'branches' | 'divisions'>('branches');
 
@@ -195,14 +197,54 @@ export const AdminOrganizationPage: React.FC = () => {
     });
   };
 
+  const handleExportCsv = () => {
+    if (activeTab === 'branches') {
+      const headers = ['Kode Cabang', 'Nama Cabang', 'Kota', 'Alamat', 'Status'];
+      const rows = branches.map((b) => [
+        `"${b.code}"`,
+        `"${b.name}"`,
+        `"${b.city}"`,
+        `"${(b.address || '').replace(/"/g, '""')}"`,
+        b.isActive ? 'AKTIF' : 'NONAKTIF',
+      ]);
+      const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `DATA-CABANG-NUSAPROC-${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      message.success('Data cabang berhasil diekspor.');
+    } else {
+      const headers = ['Kode Divisi', 'Nama Divisi', 'Deskripsi Tanggung Jawab', 'Status'];
+      const rows = divisions.map((d) => [
+        `"${d.code}"`,
+        `"${d.name}"`,
+        `"${(d.description || '').replace(/"/g, '""')}"`,
+        d.isActive ? 'AKTIF' : 'NONAKTIF',
+      ]);
+      const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `DATA-DIVISI-NUSAPROC-${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      message.success('Data divisi berhasil diekspor.');
+    }
+  };
+
   // Branch Table Columns
   const branchColumns = [
     {
       title: 'Kode Cabang',
       dataIndex: 'code',
       key: 'code',
+      width: 140,
       render: (code: string) => (
-        <Tag color="geekblue" style={{ fontWeight: 600, fontSize: 13 }}>
+        <Tag color="geekblue" style={{ fontWeight: 600, fontSize: 12, fontFamily: 'monospace' }}>
           {code}
         </Tag>
       ),
@@ -211,21 +253,27 @@ export const AdminOrganizationPage: React.FC = () => {
       title: 'Nama Kantor Cabang',
       dataIndex: 'name',
       key: 'name',
-      render: (name: string) => <Text strong>{name}</Text>,
+      width: 220,
+      render: (name: string) => <Text strong style={{ fontSize: 13, color: '#1f1f1f' }}>{name}</Text>,
     },
     {
       title: 'Kota / Wilayah',
       dataIndex: 'city',
       key: 'city',
-      render: (city: string) => <Tag color="cyan">{city}</Tag>,
+      width: 160,
+      render: (city: string) => (
+        <Tag icon={<EnvironmentOutlined />} color="cyan" style={{ fontSize: 11 }}>
+          {city}
+        </Tag>
+      ),
     },
     {
-      title: 'Alamat Kantor',
+      title: 'Alamat Lengkap',
       dataIndex: 'address',
       key: 'address',
       ellipsis: true,
       render: (address: string | null) => (
-        <Paragraph style={{ margin: 0 }} ellipsis={{ rows: 2, tooltip: address || '-' }}>
+        <Paragraph style={{ margin: 0, fontSize: 12 }} ellipsis={{ rows: 2, tooltip: address || '-' }}>
           {address || '-'}
         </Paragraph>
       ),
@@ -234,13 +282,16 @@ export const AdminOrganizationPage: React.FC = () => {
       title: 'Status',
       dataIndex: 'isActive',
       key: 'isActive',
+      width: 110,
+      align: 'center' as const,
       render: (isActive: boolean) => <StatusTag status={isActive} />,
     },
     {
       title: 'Aksi',
       key: 'actions',
+      width: 170,
       render: (_: unknown, record: BranchItem) => (
-        <Space>
+        <Space size="small">
           <Button
             size="small"
             icon={<EditOutlined />}
@@ -254,18 +305,21 @@ export const AdminOrganizationPage: React.FC = () => {
               description="Cabang non-aktif tidak akan muncul di formulir pengajuan baru."
               okText="Ya, Nonaktifkan"
               cancelText="Batal"
+              okButtonProps={{ danger: true }}
               onConfirm={() =>
                 toggleBranchStatusMutation.mutate({ id: record.id, isActive: false })
               }
             >
-              <Button size="small" danger>
+              <Button size="small" danger icon={<StopOutlined />}>
                 Nonaktifkan
               </Button>
             </Popconfirm>
           ) : (
             <Button
               size="small"
-              type="dashed"
+              type="primary"
+              ghost
+              icon={<CheckCircleOutlined />}
               onClick={() =>
                 toggleBranchStatusMutation.mutate({ id: record.id, isActive: true })
               }
@@ -284,17 +338,19 @@ export const AdminOrganizationPage: React.FC = () => {
       title: 'Kode Divisi',
       dataIndex: 'code',
       key: 'code',
+      width: 140,
       render: (code: string) => (
-        <Tag color="purple" style={{ fontWeight: 600, fontSize: 13 }}>
+        <Tag color="purple" style={{ fontWeight: 600, fontSize: 12, fontFamily: 'monospace' }}>
           {code}
         </Tag>
       ),
     },
     {
-      title: 'Nama Divisi',
+      title: 'Nama Unit Divisi',
       dataIndex: 'name',
       key: 'name',
-      render: (name: string) => <Text strong>{name}</Text>,
+      width: 240,
+      render: (name: string) => <Text strong style={{ fontSize: 13, color: '#1f1f1f' }}>{name}</Text>,
     },
     {
       title: 'Deskripsi Tanggung Jawab',
@@ -302,7 +358,7 @@ export const AdminOrganizationPage: React.FC = () => {
       key: 'description',
       ellipsis: true,
       render: (desc: string | null) => (
-        <Paragraph style={{ margin: 0 }} ellipsis={{ rows: 2, tooltip: desc || '-' }}>
+        <Paragraph style={{ margin: 0, fontSize: 12 }} ellipsis={{ rows: 2, tooltip: desc || '-' }}>
           {desc || '-'}
         </Paragraph>
       ),
@@ -311,13 +367,16 @@ export const AdminOrganizationPage: React.FC = () => {
       title: 'Status',
       dataIndex: 'isActive',
       key: 'isActive',
+      width: 110,
+      align: 'center' as const,
       render: (isActive: boolean) => <StatusTag status={isActive} />,
     },
     {
       title: 'Aksi',
       key: 'actions',
+      width: 170,
       render: (_: unknown, record: DivisionItem) => (
-        <Space>
+        <Space size="small">
           <Button
             size="small"
             icon={<EditOutlined />}
@@ -331,18 +390,21 @@ export const AdminOrganizationPage: React.FC = () => {
               description="Divisi non-aktif tidak akan muncul di formulir pengajuan baru."
               okText="Ya, Nonaktifkan"
               cancelText="Batal"
+              okButtonProps={{ danger: true }}
               onConfirm={() =>
                 toggleDivisionStatusMutation.mutate({ id: record.id, isActive: false })
               }
             >
-              <Button size="small" danger>
+              <Button size="small" danger icon={<StopOutlined />}>
                 Nonaktifkan
               </Button>
             </Popconfirm>
           ) : (
             <Button
               size="small"
-              type="dashed"
+              type="primary"
+              ghost
+              icon={<CheckCircleOutlined />}
               onClick={() =>
                 toggleDivisionStatusMutation.mutate({ id: record.id, isActive: true })
               }
@@ -355,146 +417,204 @@ export const AdminOrganizationPage: React.FC = () => {
     },
   ];
 
+  const mainTabItems = [
+    {
+      key: 'branches',
+      label: (
+        <span>
+          <BankOutlined style={{ marginRight: 6 }} />
+          Kantor Cabang ({branches.length})
+        </span>
+      ),
+    },
+    {
+      key: 'divisions',
+      label: (
+        <span>
+          <ApartmentOutlined style={{ marginRight: 6 }} />
+          Unit Divisi ({divisions.length})
+        </span>
+      ),
+    },
+  ];
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <PageHeader
-        title="Manajemen Master Data Organisasi (Kantor Cabang & Divisi)"
-        subtitle="Kelola struktur kantor cabang dan divisi internal PT Nusanet secara terpusat untuk alur pengadaan & hak akses."
-        icon={<BankOutlined />}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Breadcrumb Navigation (Figma 11) */}
+      <Breadcrumb
+        items={[
+          { title: <a href="/">Beranda</a> },
+          { title: 'Master Data' },
+          { title: 'Kantor Cabang & Divisi' },
+        ]}
+        style={{ marginBottom: 4 }}
       />
 
-      {/* Main Tabs */}
-      <Card>
-        <Tabs
-          activeKey={activeTab}
-          onChange={(key) => setActiveTab(key as 'branches' | 'divisions')}
-          items={[
-            {
-              key: 'branches',
-              label: (
-                <span>
-                  <BankOutlined />
-                  Kantor Cabang ({branches.length})
-                </span>
-              ),
-              children: (
-                <div>
-                  <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
-                    <Col xs={24} sm={16} md={12}>
-                      <Space wrap>
-                        <Input
-                          placeholder="Cari kode, nama, kota..."
-                          prefix={<SearchOutlined />}
-                          value={branchSearch}
-                          onChange={(e) => setBranchSearch(e.target.value)}
-                          allowClear
-                          style={{ width: 240 }}
-                        />
-                        <Select
-                          placeholder="Status Cabang"
-                          style={{ width: 160 }}
-                          allowClear
-                          value={branchStatusFilter}
-                          onChange={setBranchStatusFilter}
-                        >
-                          <Select.Option value={true}>Hanya Aktif</Select.Option>
-                          <Select.Option value={false}>Hanya Nonaktif</Select.Option>
-                        </Select>
-                      </Space>
-                    </Col>
-                    <Col>
-                      <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => setIsCreateBranchModalOpen(true)}
-                      >
-                        Tambah Kantor Cabang
-                      </Button>
-                    </Col>
-                  </Row>
+      {/* Header Row */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: 16,
+        }}
+      >
+        <div>
+          <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#1f1f1f' }}>
+            Master Organisasi: Cabang & Divisi
+          </Title>
+          <Text type="secondary" style={{ fontSize: 13 }}>
+            Kelola struktur kantor cabang dan unit divisi internal PT Nusanet secara terpusat untuk alur pengadaan & alokasi anggaran.
+          </Text>
+        </div>
 
-                  <Table
-                    columns={branchColumns}
-                    dataSource={branches}
-                    rowKey="id"
-                    loading={isBranchesLoading}
-                    scroll={{ x: 750 }}
-                    pagination={{ pageSize: 10, showTotal: (total) => `Total ${total} kantor cabang` }}
-                  />
-                </div>
-              ),
-            },
-            {
-              key: 'divisions',
-              label: (
-                <span>
-                  <ApartmentOutlined />
-                  Divisi Perusahaan ({divisions.length})
-                </span>
-              ),
-              children: (
-                <div>
-                  <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
-                    <Col xs={24} sm={16} md={12}>
-                      <Space wrap>
-                        <Input
-                          placeholder="Cari kode, nama divisi..."
-                          prefix={<SearchOutlined />}
-                          value={divisionSearch}
-                          onChange={(e) => setDivisionSearch(e.target.value)}
-                          allowClear
-                          style={{ width: 240 }}
-                        />
-                        <Select
-                          placeholder="Status Divisi"
-                          style={{ width: 160 }}
-                          allowClear
-                          value={divisionStatusFilter}
-                          onChange={setDivisionStatusFilter}
-                        >
-                          <Select.Option value={true}>Hanya Aktif</Select.Option>
-                          <Select.Option value={false}>Hanya Nonaktif</Select.Option>
-                        </Select>
-                      </Space>
-                    </Col>
-                    <Col>
-                      <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => setIsCreateDivisionModalOpen(true)}
-                      >
-                        Tambah Divisi
-                      </Button>
-                    </Col>
-                  </Row>
+        <Space wrap>
+          {activeTab === 'branches' ? (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setIsCreateBranchModalOpen(true)}
+            >
+              Tambah Kantor Cabang
+            </Button>
+          ) : (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setIsCreateDivisionModalOpen(true)}
+            >
+              Tambah Divisi Perusahaan
+            </Button>
+          )}
+        </Space>
+      </div>
 
-                  <Table
-                    columns={divisionColumns}
-                    dataSource={divisions}
-                    rowKey="id"
-                    loading={isDivisionsLoading}
-                    scroll={{ x: 750 }}
-                    pagination={{ pageSize: 10, showTotal: (total) => `Total ${total} divisi` }}
-                  />
-                </div>
-              ),
-            },
-          ]}
-        />
+      {/* Main Tabs (Figma 11) */}
+      <Tabs
+        activeKey={activeTab}
+        onChange={(key) => setActiveTab(key as 'branches' | 'divisions')}
+        items={mainTabItems}
+        style={{ marginBottom: -8 }}
+      />
+
+      {/* Filter & Action Card */}
+      <Card styles={{ body: { padding: '12px 16px' } }} style={{ border: '1px solid #f0f0f0', borderRadius: 8 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}
+        >
+          {activeTab === 'branches' ? (
+            <Space wrap size="middle">
+              <Input
+                placeholder="Cari kode, nama, kota cabang..."
+                prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                value={branchSearch}
+                onChange={(e) => setBranchSearch(e.target.value)}
+                allowClear
+                style={{ width: 260 }}
+              />
+              <Select
+                placeholder="Status Cabang"
+                style={{ width: 160 }}
+                allowClear
+                value={branchStatusFilter}
+                onChange={setBranchStatusFilter}
+              >
+                <Select.Option value={true}>Hanya Aktif</Select.Option>
+                <Select.Option value={false}>Hanya Nonaktif</Select.Option>
+              </Select>
+              <Button
+                onClick={() => {
+                  setBranchSearch('');
+                  setBranchStatusFilter(undefined);
+                }}
+              >
+                Reset
+              </Button>
+            </Space>
+          ) : (
+            <Space wrap size="middle">
+              <Input
+                placeholder="Cari kode, nama divisi..."
+                prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                value={divisionSearch}
+                onChange={(e) => setDivisionSearch(e.target.value)}
+                allowClear
+                style={{ width: 260 }}
+              />
+              <Select
+                placeholder="Status Divisi"
+                style={{ width: 160 }}
+                allowClear
+                value={divisionStatusFilter}
+                onChange={setDivisionStatusFilter}
+              >
+                <Select.Option value={true}>Hanya Aktif</Select.Option>
+                <Select.Option value={false}>Hanya Nonaktif</Select.Option>
+              </Select>
+              <Button
+                onClick={() => {
+                  setDivisionSearch('');
+                  setDivisionStatusFilter(undefined);
+                }}
+              >
+                Reset
+              </Button>
+            </Space>
+          )}
+
+          <Space>
+            <Button icon={<DownloadOutlined />} onClick={handleExportCsv}>
+              Ekspor CSV
+            </Button>
+          </Space>
+        </div>
       </Card>
 
-      {/* Modal: Tambah Kantor Cabang */}
+      {/* Table Content */}
+      <Card styles={{ body: { padding: 0 } }} style={{ border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden' }}>
+        {activeTab === 'branches' ? (
+          <Table<BranchItem>
+            columns={branchColumns}
+            dataSource={branches}
+            rowKey="id"
+            loading={isBranchesLoading}
+            scroll={{ x: 800 }}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showTotal: (total, range) => `Menampilkan ${range[0]} - ${range[1]} dari total ${total} kantor cabang`,
+            }}
+          />
+        ) : (
+          <Table<DivisionItem>
+            columns={divisionColumns}
+            dataSource={divisions}
+            rowKey="id"
+            loading={isDivisionsLoading}
+            scroll={{ x: 800 }}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showTotal: (total, range) => `Menampilkan ${range[0]} - ${range[1]} dari total ${total} unit divisi`,
+            }}
+          />
+        )}
+      </Card>
+
+      {/* Modal Tambah Cabang */}
       <Modal
         title="Tambah Kantor Cabang Baru"
         open={isCreateBranchModalOpen}
-        onCancel={() => {
-          setIsCreateBranchModalOpen(false);
-          createBranchForm.resetFields();
-        }}
-        onOk={() => createBranchForm.submit()}
-        confirmLoading={createBranchMutation.isPending}
-        okText="Simpan Kantor Cabang"
-        cancelText="Batal"
+        onCancel={() => setIsCreateBranchModalOpen(false)}
+        footer={null}
+        width={500}
         style={{ maxWidth: 'calc(100vw - 32px)' }}
       >
         <Form
@@ -508,11 +628,10 @@ export const AdminOrganizationPage: React.FC = () => {
             label="Kode Cabang"
             rules={[
               { required: true, message: 'Kode cabang wajib diisi' },
-              { min: 2, message: 'Minimal 2 karakter' },
-              { pattern: /^[A-Z0-9_-]+$/i, message: 'Gunakan huruf, angka, -, atau _' },
+              { max: 20, message: 'Maksimal 20 karakter' },
             ]}
           >
-            <Input placeholder="Contoh: BRANCH-BALI-01" />
+            <Input placeholder="Contoh: MEDAN, JAKARTA, BALI" style={{ textTransform: 'uppercase' }} />
           </Form.Item>
 
           <Form.Item
@@ -520,36 +639,39 @@ export const AdminOrganizationPage: React.FC = () => {
             label="Nama Kantor Cabang"
             rules={[{ required: true, message: 'Nama kantor cabang wajib diisi' }]}
           >
-            <Input placeholder="Contoh: Kantor Cabang Denpasar Bali" />
+            <Input placeholder="Contoh: Kantor Cabang Medan" />
           </Form.Item>
 
           <Form.Item
             name="city"
-            label="Kota / Wilayah"
-            rules={[{ required: true, message: 'Nama kota wajib diisi' }]}
+            label="Kota"
+            rules={[{ required: true, message: 'Kota wajib diisi' }]}
           >
-            <Input placeholder="Contoh: Denpasar" />
+            <Input placeholder="Contoh: Medan" />
           </Form.Item>
 
-          <Form.Item name="address" label="Alamat Kantor (Opsional)">
-            <Input.TextArea rows={3} placeholder="Contoh: Jl. Teuku Umar No. 88, Denpasar Barat" />
+          <Form.Item name="address" label="Alamat Lengkap">
+            <Input.TextArea rows={3} placeholder="Alamat fisik kantor cabang" />
           </Form.Item>
 
-          <Form.Item name="isActive" label="Status Aktif" valuePropName="checked">
-            <Switch checkedChildren="Aktif" unCheckedChildren="Nonaktif" />
-          </Form.Item>
+          <div style={{ textAlign: 'right', marginTop: 24 }}>
+            <Space>
+              <Button onClick={() => setIsCreateBranchModalOpen(false)}>Batal</Button>
+              <Button type="primary" htmlType="submit" loading={createBranchMutation.isPending}>
+                Simpan Cabang
+              </Button>
+            </Space>
+          </div>
         </Form>
       </Modal>
 
-      {/* Modal: Edit Kantor Cabang */}
+      {/* Modal Edit Cabang */}
       <Modal
         title={`Edit Kantor Cabang: ${editingBranch?.name || ''}`}
         open={!!editingBranch}
         onCancel={() => setEditingBranch(null)}
-        onOk={() => editBranchForm.submit()}
-        confirmLoading={updateBranchMutation.isPending}
-        okText="Perbarui Cabang"
-        cancelText="Batal"
+        footer={null}
+        width={500}
         style={{ maxWidth: 'calc(100vw - 32px)' }}
       >
         <Form
@@ -561,15 +683,8 @@ export const AdminOrganizationPage: React.FC = () => {
             }
           }}
         >
-          <Form.Item
-            name="code"
-            label="Kode Cabang"
-            rules={[
-              { required: true, message: 'Kode cabang wajib diisi' },
-              { pattern: /^[A-Z0-9_-]+$/i, message: 'Gunakan huruf, angka, -, atau _' },
-            ]}
-          >
-            <Input />
+          <Form.Item name="code" label="Kode Cabang">
+            <Input disabled style={{ textTransform: 'uppercase' }} />
           </Form.Item>
 
           <Form.Item
@@ -582,34 +697,38 @@ export const AdminOrganizationPage: React.FC = () => {
 
           <Form.Item
             name="city"
-            label="Kota / Wilayah"
-            rules={[{ required: true, message: 'Nama kota wajib diisi' }]}
+            label="Kota"
+            rules={[{ required: true, message: 'Kota wajib diisi' }]}
           >
             <Input />
           </Form.Item>
 
-          <Form.Item name="address" label="Alamat Kantor">
+          <Form.Item name="address" label="Alamat Lengkap">
             <Input.TextArea rows={3} />
           </Form.Item>
 
           <Form.Item name="isActive" label="Status Aktif" valuePropName="checked">
-            <Switch checkedChildren="Aktif" unCheckedChildren="Nonaktif" />
+            <Switch />
           </Form.Item>
+
+          <div style={{ textAlign: 'right', marginTop: 24 }}>
+            <Space>
+              <Button onClick={() => setEditingBranch(null)}>Batal</Button>
+              <Button type="primary" htmlType="submit" loading={updateBranchMutation.isPending}>
+                Perbarui Cabang
+              </Button>
+            </Space>
+          </div>
         </Form>
       </Modal>
 
-      {/* Modal: Tambah Divisi */}
+      {/* Modal Tambah Divisi */}
       <Modal
-        title="Tambah Divisi Baru"
+        title="Tambah Unit Divisi Baru"
         open={isCreateDivisionModalOpen}
-        onCancel={() => {
-          setIsCreateDivisionModalOpen(false);
-          createDivisionForm.resetFields();
-        }}
-        onOk={() => createDivisionForm.submit()}
-        confirmLoading={createDivisionMutation.isPending}
-        okText="Simpan Divisi"
-        cancelText="Batal"
+        onCancel={() => setIsCreateDivisionModalOpen(false)}
+        footer={null}
+        width={500}
         style={{ maxWidth: 'calc(100vw - 32px)' }}
       >
         <Form
@@ -623,40 +742,42 @@ export const AdminOrganizationPage: React.FC = () => {
             label="Kode Divisi"
             rules={[
               { required: true, message: 'Kode divisi wajib diisi' },
-              { min: 2, message: 'Minimal 2 karakter' },
-              { pattern: /^[A-Z0-9_-]+$/i, message: 'Gunakan huruf, angka, -, atau _' },
+              { max: 20, message: 'Maksimal 20 karakter' },
             ]}
           >
-            <Input placeholder="Contoh: DIV-SEC" />
+            <Input placeholder="Contoh: DIV-IT, DIV-FIN, DIV-HR" style={{ textTransform: 'uppercase' }} />
           </Form.Item>
 
           <Form.Item
             name="name"
-            label="Nama Divisi"
+            label="Nama Unit Divisi"
             rules={[{ required: true, message: 'Nama divisi wajib diisi' }]}
           >
-            <Input placeholder="Contoh: Divisi Keamanan Siber & Kepatuhan" />
+            <Input placeholder="Contoh: Divisi Teknologi Informasi" />
           </Form.Item>
 
           <Form.Item name="description" label="Deskripsi Tanggung Jawab">
-            <Input.TextArea rows={3} placeholder="Contoh: Bertanggung jawab atas keamanan sistem dan audit ISO" />
+            <Input.TextArea rows={3} placeholder="Ruang lingkup tanggung jawab divisi" />
           </Form.Item>
 
-          <Form.Item name="isActive" label="Status Aktif" valuePropName="checked">
-            <Switch checkedChildren="Aktif" unCheckedChildren="Nonaktif" />
-          </Form.Item>
+          <div style={{ textAlign: 'right', marginTop: 24 }}>
+            <Space>
+              <Button onClick={() => setIsCreateDivisionModalOpen(false)}>Batal</Button>
+              <Button type="primary" htmlType="submit" loading={createDivisionMutation.isPending}>
+                Simpan Divisi
+              </Button>
+            </Space>
+          </div>
         </Form>
       </Modal>
 
-      {/* Modal: Edit Divisi */}
+      {/* Modal Edit Divisi */}
       <Modal
-        title={`Edit Divisi: ${editingDivision?.name || ''}`}
+        title={`Edit Unit Divisi: ${editingDivision?.name || ''}`}
         open={!!editingDivision}
         onCancel={() => setEditingDivision(null)}
-        onOk={() => editDivisionForm.submit()}
-        confirmLoading={updateDivisionMutation.isPending}
-        okText="Perbarui Divisi"
-        cancelText="Batal"
+        footer={null}
+        width={500}
         style={{ maxWidth: 'calc(100vw - 32px)' }}
       >
         <Form
@@ -668,20 +789,13 @@ export const AdminOrganizationPage: React.FC = () => {
             }
           }}
         >
-          <Form.Item
-            name="code"
-            label="Kode Divisi"
-            rules={[
-              { required: true, message: 'Kode divisi wajib diisi' },
-              { pattern: /^[A-Z0-9_-]+$/i, message: 'Gunakan huruf, angka, -, atau _' },
-            ]}
-          >
-            <Input />
+          <Form.Item name="code" label="Kode Divisi">
+            <Input disabled style={{ textTransform: 'uppercase' }} />
           </Form.Item>
 
           <Form.Item
             name="name"
-            label="Nama Divisi"
+            label="Nama Unit Divisi"
             rules={[{ required: true, message: 'Nama divisi wajib diisi' }]}
           >
             <Input />
@@ -692,8 +806,17 @@ export const AdminOrganizationPage: React.FC = () => {
           </Form.Item>
 
           <Form.Item name="isActive" label="Status Aktif" valuePropName="checked">
-            <Switch checkedChildren="Aktif" unCheckedChildren="Nonaktif" />
+            <Switch />
           </Form.Item>
+
+          <div style={{ textAlign: 'right', marginTop: 24 }}>
+            <Space>
+              <Button onClick={() => setEditingDivision(null)}>Batal</Button>
+              <Button type="primary" htmlType="submit" loading={updateDivisionMutation.isPending}>
+                Perbarui Divisi
+              </Button>
+            </Space>
+          </div>
         </Form>
       </Modal>
     </div>

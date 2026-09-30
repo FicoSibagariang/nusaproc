@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { verifyAuditChainIntegrity, getAuditTrailForEntity } from './service';
+import { verifyAuditChainIntegrity, getAuditTrailForEntity, getAllAuditEntries } from './service';
 import { generateAuditorEvidenceBundle } from '../storage/service';
 import { formatProblemDetails } from '../sod/errors';
 
@@ -16,24 +16,17 @@ export function createAuditApp(): Hono {
     }
   });
 
-  // 2. Get Audit Trail for an entity
+  // 2. Get Audit Trail for an entity or all entries
   app.get('/audit/trail', async (c) => {
     const entityName = c.req.query('entityName');
     const entityId = c.req.query('entityId');
 
-    if (!entityName || !entityId) {
-      return c.json(
-        {
-          title: 'Bad Request',
-          status: 400,
-          detail: 'Parameter query entityName dan entityId wajib diisi.',
-        },
-        400
-      );
-    }
-
     try {
-      const trail = await getAuditTrailForEntity(entityName, entityId);
+      if (entityName && entityId) {
+        const trail = await getAuditTrailForEntity(entityName, entityId);
+        return c.json({ success: true, data: trail });
+      }
+      const trail = await getAllAuditEntries();
       return c.json({ success: true, data: trail });
     } catch (err: unknown) {
       return c.json(formatProblemDetails(err, c.req.path), 400);

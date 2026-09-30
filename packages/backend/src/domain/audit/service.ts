@@ -126,3 +126,9 @@ export async function getAuditTrailForEntity(
   const repo = new AuditRepository();
   return await repo.findAuditEntriesByEntity(entityName, entityId);
 }
+
+export async function getAllAuditEntries(): Promise<AuditTrailEntryRecord[]> {
+  const repo = new AuditRepository();
+  return await repo.findAllAuditEntries();
+}
+

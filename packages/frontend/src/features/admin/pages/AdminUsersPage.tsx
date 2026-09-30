@@ -17,6 +17,9 @@ import {
   Card,
   Row,
   Col,
+  Tabs,
+  Breadcrumb,
+  Tooltip,
 } from 'antd';
 import {
   UserAddOutlined,
@@ -27,6 +30,9 @@ import {
   KeyOutlined,
   TeamOutlined,
   SafetyCertificateOutlined,
+  DownloadOutlined,
+  MailOutlined,
+  IdcardOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -40,10 +46,9 @@ import {
   type CreateUserPayload,
 } from '../../../api';
 import type { AppRole } from '@nusaproc/shared';
-import { PageHeader } from '../../../components/common/PageHeader';
 import { RoleTag, StatusTag, ROLE_COLORS, ROLE_LABELS } from '../../../components/common/StatusTag';
 
-const { Text } = Typography;
+const { Title, Text } = Typography;
 
 const ALL_ROLES: { label: string; value: AppRole; color: string }[] = (
   ['REQUESTER', 'APPROVER', 'ACCOUNT_PAYABLE', 'WAREHOUSE', 'FINANCE', 'AUDITOR', 'ADMIN'] as AppRole[]
@@ -55,11 +60,13 @@ const ALL_ROLES: { label: string; value: AppRole; color: string }[] = (
 
 export const AdminUsersPage: React.FC = () => {
   const { message } = App.useApp();
+  const { token } = theme.useToken();
   const queryClient = useQueryClient();
+
+  const [activeTab, setActiveTab] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [divisionFilter, setDivisionFilter] = useState<string | undefined>(undefined);
   const [roleFilter, setRoleFilter] = useState<string | undefined>(undefined);
-  const [statusFilter, setStatusFilter] = useState<boolean | undefined>(undefined);
 
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -71,14 +78,13 @@ export const AdminUsersPage: React.FC = () => {
 
   // Queries
   const { data, isLoading } = useQuery({
-    queryKey: ['users', searchTerm, divisionFilter, roleFilter, statusFilter],
+    queryKey: ['users', searchTerm, divisionFilter, roleFilter],
     queryKeyHashFn: (queryKey) => JSON.stringify(queryKey),
     queryFn: () =>
       fetchUsers({
         search: searchTerm || undefined,
         divisionId: divisionFilter || undefined,
         role: roleFilter || undefined,
-        isActive: statusFilter,
       }),
   });
 
@@ -106,6 +112,29 @@ export const AdminUsersPage: React.FC = () => {
     activeDivisions.forEach((d) => map.set(d.code, d.name));
     return map;
   }, [activeDivisions]);
+
+  const rawUsers: UserItem[] = data?.data || [];
+
+  // Filtered by status tab
+  const filteredUsers = useMemo(() => {
+    if (activeTab === 'ACTIVE') return rawUsers.filter((u) => u.isActive);
+    if (activeTab === 'INACTIVE') return rawUsers.filter((u) => !u.isActive);
+    return rawUsers;
+  }, [rawUsers, activeTab]);
+
+  const tabCounts = useMemo(() => {
+    return {
+      ALL: rawUsers.length,
+      ACTIVE: rawUsers.filter((u) => u.isActive).length,
+      INACTIVE: rawUsers.filter((u) => !u.isActive).length,
+    };
+  }, [rawUsers]);
+
+  const statusTabItems = [
+    { key: 'ALL', label: `Semua Pengguna (${tabCounts.ALL})` },
+    { key: 'ACTIVE', label: `Aktif (${tabCounts.ACTIVE})` },
+    { key: 'INACTIVE', label: `Nonaktif (${tabCounts.INACTIVE})` },
+  ];
 
   // Mutations
   const createMutation = useMutation({
@@ -213,34 +242,103 @@ export const AdminUsersPage: React.FC = () => {
     });
   };
 
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setDivisionFilter(undefined);
+    setRoleFilter(undefined);
+    setActiveTab('ALL');
+  };
+
+  const handleExportCsv = () => {
+    const headers = ['NIP', 'Nama Lengkap', 'Email', 'Divisi', 'Cabang', 'Peran', 'Tax Specialist', 'Status'];
+    const rows = filteredUsers.map((u) => [
+      `"${u.employeeId}"`,
+      `"${u.fullName}"`,
+      `"${u.email}"`,
+      `"${u.divisionName || divisionMap.get(u.divisionId) || u.divisionId}"`,
+      `"${u.branchName || branchMap.get(u.branchId) || u.branchId}"`,
+      `"${u.roles.map((r) => r.role).join(', ')}"`,
+      u.roles.some((r) => r.isTaxSpecialist) ? 'YA' : 'TIDAK',
+      u.isActive ? 'AKTIF' : 'NONAKTIF',
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `DATA-PENGGUNA-NUSAPROC-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    message.success('Data pengguna berhasil diekspor ke format CSV.');
+  };
+
+  // Columns definition (Figma 10)
   const columns = [
     {
-      title: 'Karyawan & NIP',
+      title: 'Karyawan & Profil',
       key: 'employee',
-      render: (_: unknown, record: UserItem) => (
-        <div>
-          <Text strong style={{ fontSize: 14 }}>
-            {record.fullName}
-          </Text>
-          <br />
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {record.employeeId} • {record.email}
-          </Text>
-        </div>
-      ),
+      width: 260,
+      render: (_: unknown, record: UserItem) => {
+        const initials = record.fullName
+          .split(' ')
+          .map((n) => n[0])
+          .slice(0, 2)
+          .join('')
+          .toUpperCase();
+
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {/* User Avatar Initial (Figma 8:197 User Cell) */}
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                backgroundColor: '#e6f4ff',
+                color: '#0052cc',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 600,
+                fontSize: 13,
+                flexShrink: 0,
+              }}
+            >
+              {initials}
+            </div>
+
+            <div style={{ overflow: 'hidden' }}>
+              <Text strong style={{ fontSize: 13, display: 'block', color: '#1f1f1f' }}>
+                {record.fullName}
+              </Text>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <Tag color="default" style={{ fontSize: 10, padding: '0 4px', margin: 0, fontFamily: 'monospace' }}>
+                  <IdcardOutlined style={{ marginRight: 3 }} />
+                  {record.employeeId}
+                </Tag>
+                <Text type="secondary" style={{ fontSize: 11 }} ellipsis={{ tooltip: record.email }}>
+                  {record.email}
+                </Text>
+              </div>
+            </div>
+          </div>
+        );
+      },
     },
     {
-      title: 'Divisi / Cabang',
+      title: 'Divisi & Kantor Cabang',
       key: 'org',
+      width: 220,
       render: (_: unknown, record: UserItem) => {
         const divName = record.divisionName || divisionMap.get(record.divisionId) || record.divisionId;
         const brName = record.branchName || branchMap.get(record.branchId) || record.branchId;
         return (
-          <Space direction="vertical" size={3}>
-            <Tag color="geekblue" style={{ margin: 0, whiteSpace: 'normal', height: 'auto', padding: '2px 8px' }}>
+          <Space direction="vertical" size={2}>
+            <Tag color="geekblue" style={{ margin: 0, fontSize: 11 }}>
               {divName}
             </Tag>
-            <Tag color="default" style={{ margin: 0, whiteSpace: 'normal', height: 'auto', padding: '2px 8px' }}>
+            <Tag color="default" style={{ margin: 0, fontSize: 11 }}>
               {brName}
             </Tag>
           </Space>
@@ -250,8 +348,9 @@ export const AdminUsersPage: React.FC = () => {
     {
       title: 'Peran & Hak Akses (RBAC)',
       key: 'roles',
+      width: 240,
       render: (_: unknown, record: UserItem) => (
-        <Space wrap size={[2, 4]}>
+        <Space wrap size={[4, 4]}>
           {record.roles.map((r) => (
             <RoleTag key={r.role} role={r.role} isTaxSpecialist={r.isTaxSpecialist} />
           ))}
@@ -259,32 +358,36 @@ export const AdminUsersPage: React.FC = () => {
       ),
     },
     {
-      title: 'Autentikasi',
+      title: 'Metode Autentikasi',
       key: 'auth',
+      width: 170,
       render: (_: unknown, record: UserItem) => (
         <Space direction="vertical" size={2}>
           {record.isLocalFallback && (
-            <Tag icon={<KeyOutlined />} color="purple">
-              Local Password
+            <Tag icon={<KeyOutlined />} color="purple" style={{ fontSize: 11 }}>
+              Password Fallback
             </Tag>
           )}
-          <Tag icon={<SafetyCertificateOutlined />} color="blue">
+          <Tag icon={<SafetyCertificateOutlined />} color="blue" style={{ fontSize: 11 }}>
             Google SSO
           </Tag>
         </Space>
       ),
     },
     {
-      title: 'Status',
+      title: 'Status Akun',
       dataIndex: 'isActive',
       key: 'status',
+      width: 120,
+      align: 'center' as const,
       render: (isActive: boolean) => <StatusTag status={isActive} />,
     },
     {
       title: 'Aksi',
       key: 'actions',
+      width: 160,
       render: (_: unknown, record: UserItem) => (
-        <Space>
+        <Space size="small">
           <Button
             size="small"
             icon={<EditOutlined />}
@@ -326,12 +429,37 @@ export const AdminUsersPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <PageHeader
-        title="Manajemen Pengguna & Hak Akses (US12)"
-        subtitle="Kelola akun karyawan, hak akses multi-peran (RBAC), dan status aktifasi pengguna PT Nusanet."
-        icon={<TeamOutlined />}
-        extra={
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Breadcrumb Navigation (Figma 10) */}
+      <Breadcrumb
+        items={[
+          { title: <a href="/">Beranda</a> },
+          { title: 'Tata Kelola & Sistem' },
+          { title: 'Manajemen Pengguna' },
+        ]}
+        style={{ marginBottom: 4 }}
+      />
+
+      {/* Header Row */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: 16,
+        }}
+      >
+        <div>
+          <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#1f1f1f' }}>
+            Manajemen Pengguna & Hak Akses (US12)
+          </Title>
+          <Text type="secondary" style={{ fontSize: 13 }}>
+            Kelola akun karyawan, hak akses multi-peran (RBAC), spesialisasi pajak, dan status aktivasi pengguna PT Nusanet.
+          </Text>
+        </div>
+
+        <Space wrap>
           <Button
             type="primary"
             icon={<UserAddOutlined />}
@@ -339,24 +467,41 @@ export const AdminUsersPage: React.FC = () => {
           >
             Tambah Pengguna Baru
           </Button>
-        }
+        </Space>
+      </div>
+
+      {/* Status Filter Tabs (Figma 10) */}
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={statusTabItems}
+        style={{ marginBottom: -8 }}
       />
 
-      <Card>
-        <Row gutter={[16, 16]}>
-          <Col xs={24} sm={12} md={6}>
+      {/* Filter & Search Bar */}
+      <Card styles={{ body: { padding: '12px 16px' } }} style={{ border: '1px solid #f0f0f0', borderRadius: 8 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}
+        >
+          <Space wrap size="middle">
             <Input
               placeholder="Cari nama, email, NIP..."
-              prefix={<SearchOutlined />}
+              prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               allowClear
+              style={{ width: 260 }}
             />
-          </Col>
-          <Col xs={24} sm={12} md={6}>
+
             <Select
               placeholder="Filter Divisi"
-              style={{ width: '100%' }}
+              style={{ width: 180 }}
               allowClear
               showSearch
               optionFilterProp="children"
@@ -369,11 +514,10 @@ export const AdminUsersPage: React.FC = () => {
                 </Select.Option>
               ))}
             </Select>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
+
             <Select
               placeholder="Filter Peran"
-              style={{ width: '100%' }}
+              style={{ width: 170 }}
               allowClear
               value={roleFilter}
               onChange={setRoleFilter}
@@ -384,30 +528,31 @@ export const AdminUsersPage: React.FC = () => {
                 </Select.Option>
               ))}
             </Select>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Select
-              placeholder="Status Akun"
-              style={{ width: '100%' }}
-              allowClear
-              value={statusFilter}
-              onChange={setStatusFilter}
-            >
-              <Select.Option value={true}>Aktif</Select.Option>
-              <Select.Option value={false}>Nonaktif</Select.Option>
-            </Select>
-          </Col>
-        </Row>
+
+            <Button onClick={handleResetFilters}>Reset</Button>
+          </Space>
+
+          <Space>
+            <Button icon={<DownloadOutlined />} onClick={handleExportCsv}>
+              Ekspor CSV
+            </Button>
+          </Space>
+        </div>
       </Card>
 
-      <Card>
-        <Table
-          dataSource={data?.data || []}
+      {/* Main Users Table */}
+      <Card styles={{ body: { padding: 0 } }} style={{ border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden' }}>
+        <Table<UserItem>
+          dataSource={filteredUsers}
           columns={columns}
           rowKey="id"
           loading={isLoading}
-          scroll={{ x: 800 }}
-          pagination={{ pageSize: 10, showTotal: (total) => `Total ${total} pengguna` }}
+          scroll={{ x: 1050 }}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showTotal: (total, range) => `Menampilkan ${range[0]} - ${range[1]} dari total ${total} pengguna`,
+          }}
         />
       </Card>
 
@@ -440,7 +585,7 @@ export const AdminUsersPage: React.FC = () => {
               { type: 'email', message: 'Format email tidak valid' },
             ]}
           >
-            <Input placeholder="contoh@nusanet.net.id" />
+            <Input prefix={<MailOutlined style={{ color: '#bfbfbf' }} />} placeholder="contoh@nusanet.net.id" />
           </Form.Item>
 
           <Row gutter={12}>
@@ -609,3 +754,5 @@ export const AdminUsersPage: React.FC = () => {
     </div>
   );
 };
+
+export default AdminUsersPage;
