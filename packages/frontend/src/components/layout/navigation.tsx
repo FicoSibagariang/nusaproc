@@ -3,6 +3,7 @@ import {
   ShoppingCartOutlined,
   CheckCircleOutlined,
   FileDoneOutlined,
+  FileTextOutlined,
   ShopOutlined,
   InboxOutlined,
   WarningOutlined,
@@ -10,6 +11,7 @@ import {
   BankOutlined,
   AuditOutlined,
   DashboardOutlined,
+  AppstoreOutlined,
   TeamOutlined,
   ApartmentOutlined,
   CommentOutlined,
@@ -171,3 +173,168 @@ export function getNavigationMenuItemsForRole(role: AppRole): MenuItem[] {
       ];
   }
 }
+
+/**
+ * Returns navigation menu items grouped into sections matching Figma UI Refinement v1:
+ * - Dashboard (Single top item)
+ * - PENGADAAN (PR, Approvals, PO, Vendors)
+ * - PENERIMAAN & KUALITAS (BAST, NCR)
+ * - KEUANGAN (Invoices, Payments)
+ * - TATA KELOLA (Audit Trail, Manajemen Pengguna, Master Cabang & Divisi)
+ * - Masukan & Laporan (Footer item)
+ */
+export function getGroupedNavigationMenuItems(role: AppRole): MenuItem[] {
+  const allowedItems = getNavigationMenuItemsForRole(role);
+  const allowedKeys = new Set(allowedItems.map((item) => item?.key));
+
+  const result: MenuItem[] = [];
+
+  // 1. Dashboard (Always on top)
+  if (allowedKeys.has('/dashboard')) {
+    result.push({
+      key: '/dashboard',
+      icon: <AppstoreOutlined />,
+      label: 'Dashboard',
+    });
+  }
+
+  // 2. PENGADAAN
+  const pengadaanChildren: MenuItem[] = [];
+  if (allowedKeys.has('/pr')) {
+    pengadaanChildren.push({
+      key: '/pr',
+      icon: <ShoppingCartOutlined />,
+      label: 'Purchase Request (PR)',
+    });
+  }
+  if (allowedKeys.has('/approvals/pr')) {
+    pengadaanChildren.push({
+      key: '/approvals/pr',
+      icon: <CheckCircleOutlined />,
+      label: 'Persetujuan PR',
+    });
+  }
+  if (allowedKeys.has('/po')) {
+    pengadaanChildren.push({
+      key: '/po',
+      icon: <FileTextOutlined />,
+      label: 'Purchase Order (PO)',
+    });
+  }
+  if (allowedKeys.has('/approvals/po')) {
+    pengadaanChildren.push({
+      key: '/approvals/po',
+      icon: <FileDoneOutlined />,
+      label: 'Persetujuan PO',
+    });
+  }
+  if (allowedKeys.has('/vendors')) {
+    pengadaanChildren.push({
+      key: '/vendors',
+      icon: <ShopOutlined />,
+      label: 'Vendor & Rekening',
+    });
+  }
+  if (pengadaanChildren.length > 0) {
+    result.push({
+      type: 'group',
+      label: 'PENGADAAN',
+      key: 'group-pengadaan',
+      children: pengadaanChildren,
+    });
+  }
+
+  // 3. PENERIMAAN & KUALITAS
+  const penerimaanChildren: MenuItem[] = [];
+  if (allowedKeys.has('/receipts')) {
+    penerimaanChildren.push({
+      key: '/receipts',
+      icon: <InboxOutlined />,
+      label: 'Penerimaan (BAST)',
+    });
+  }
+  if (allowedKeys.has('/ncr')) {
+    penerimaanChildren.push({
+      key: '/ncr',
+      icon: <WarningOutlined />,
+      label: 'NCR',
+    });
+  }
+  if (penerimaanChildren.length > 0) {
+    result.push({
+      type: 'group',
+      label: 'PENERIMAAN & KUALITAS',
+      key: 'group-penerimaan',
+      children: penerimaanChildren,
+    });
+  }
+
+  // 4. KEUANGAN
+  const keuanganChildren: MenuItem[] = [];
+  if (allowedKeys.has('/invoices')) {
+    keuanganChildren.push({
+      key: '/invoices',
+      icon: <DollarOutlined />,
+      label: 'Invoice & Match',
+    });
+  }
+  if (allowedKeys.has('/payments')) {
+    keuanganChildren.push({
+      key: '/payments',
+      icon: <BankOutlined />,
+      label: 'Pembayaran',
+    });
+  }
+  if (keuanganChildren.length > 0) {
+    result.push({
+      type: 'group',
+      label: 'KEUANGAN',
+      key: 'group-keuangan',
+      children: keuanganChildren,
+    });
+  }
+
+  // 5. TATA KELOLA
+  const tataKelolaChildren: MenuItem[] = [];
+  if (allowedKeys.has('/audit')) {
+    tataKelolaChildren.push({
+      key: '/audit',
+      icon: <AuditOutlined />,
+      label: 'Audit Trail',
+    });
+  }
+  if (allowedKeys.has('/admin/users')) {
+    tataKelolaChildren.push({
+      key: '/admin/users',
+      icon: <TeamOutlined />,
+      label: 'Manajemen Pengguna',
+    });
+  }
+  if (allowedKeys.has('/admin/organization')) {
+    tataKelolaChildren.push({
+      key: '/admin/organization',
+      icon: <ApartmentOutlined />,
+      label: 'Master Cabang & Divisi',
+    });
+  }
+  if (tataKelolaChildren.length > 0) {
+    result.push({
+      type: 'group',
+      label: 'TATA KELOLA',
+      key: 'group-tata-kelola',
+      children: tataKelolaChildren,
+    });
+  }
+
+  // 6. Masukan & Laporan (Footer / Feedback)
+  if (allowedKeys.has('/admin/feedback')) {
+    result.push({
+      key: '/admin/feedback',
+      icon: <CommentOutlined />,
+      label: 'Masukan & Laporan',
+    });
+  }
+
+  return result;
+}
+
