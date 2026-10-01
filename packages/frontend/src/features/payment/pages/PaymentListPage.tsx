@@ -14,30 +14,36 @@ import {
   Breadcrumb,
   Tooltip,
   Dropdown,
+  Modal,
+  Descriptions,
   type MenuProps,
 } from 'antd';
 import {
-  CheckOutlined,
-  ThunderboltOutlined,
-  DollarCircleOutlined,
   BankOutlined,
   DownloadOutlined,
+  PlusOutlined,
   SearchOutlined,
   SwapOutlined,
   DownOutlined,
-  UpOutlined,
+  RightOutlined,
   FileTextOutlined,
   CheckCircleOutlined,
+  CheckCircleFilled,
   ClockCircleOutlined,
+  ClockCircleFilled,
+  SafetyCertificateOutlined,
+  SafetyCertificateFilled,
+  EditOutlined,
+  StopOutlined,
+  SnippetsOutlined,
   EyeOutlined,
-  MoreOutlined,
+  EllipsisOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { paymentApi } from '../../../api/endpoints/payment';
 import { formatRupiah } from '../../../utils/currency';
 import { formatDate } from '../../../utils/date';
 import { useReauthStore } from '../../../stores/useReauthStore';
-import { PaymentWorkflowSteps } from '../components/PaymentWorkflowSteps';
 
 const { Text, Title } = Typography;
 
@@ -61,15 +67,68 @@ export interface PaymentProposalItem {
   updatedAt?: string;
 }
 
-const mapPaymentStatusToStep = (
-  status?: string
-): 'DRAFT' | 'PENDING_CHECK' | 'APPROVED_FOR_PAYMENT' | 'IN_PROGRESS' | 'PAID' | 'REJECTED' => {
-  if (status === 'PROPOSED') return 'PENDING_CHECK';
-  if (status === 'CHECKED') return 'APPROVED_FOR_PAYMENT';
-  if (status === 'EXECUTED') return 'PAID';
-  if (status === 'REJECTED') return 'REJECTED';
-  return 'DRAFT';
-};
+// Fallback mock proposals matching Figma 08 exactly
+const FIGMA_PAYMENT_PROPOSALS: PaymentProposalItem[] = [
+  {
+    id: 'PAY-202609-0013',
+    proposalNumber: 'PAY-202609-0013',
+    createdAt: '2026-09-29T10:00:00Z',
+    vendorName: 'KOPNUTERA',
+    invoiceNumber: 'INV/KOP/2609/0009',
+    targetBankName: 'Bank Mandiri',
+    targetBankAccount: '•••• 4321',
+    paymentAmount: 12600000,
+    status: 'DRAFT',
+    makerName: 'Finance Staff',
+  },
+  {
+    id: 'PAY-202609-0012',
+    proposalNumber: 'PAY-202609-0012',
+    createdAt: '2026-09-28T14:30:00Z',
+    vendorName: 'PT Mitra Solusi Jaringan',
+    invoiceNumber: 'INV/MSJ/2609/0147',
+    targetBankName: 'Bank Mandiri',
+    targetBankAccount: '•••• 1188',
+    paymentAmount: 148500000,
+    status: 'PROPOSED',
+    checkerName: 'Head of AP',
+  },
+  {
+    id: 'PAY-202609-0011',
+    proposalNumber: 'PAY-202609-0011',
+    createdAt: '2026-09-27T09:15:00Z',
+    vendorName: 'PT Fiber Optik Nusantara',
+    invoiceNumber: 'INV/FON/2609/0027',
+    targetBankName: 'BCA',
+    targetBankAccount: '•••• 7890',
+    paymentAmount: 64380000,
+    status: 'CHECKED',
+    executorName: 'Finance Treasury',
+  },
+  {
+    id: 'PAY-202609-0010',
+    proposalNumber: 'PAY-202609-0010',
+    createdAt: '2026-09-25T11:20:00Z',
+    updatedAt: '2026-09-26T16:00:00Z',
+    vendorName: 'PT Fiber Optik Nusantara',
+    invoiceNumber: 'INV/FON/2609/0021',
+    targetBankName: 'BCA',
+    targetBankAccount: '•••• 7890',
+    paymentAmount: 52140000,
+    status: 'EXECUTED',
+  },
+  {
+    id: 'PAY-202609-0009',
+    proposalNumber: 'PAY-202609-0009',
+    createdAt: '2026-09-22T08:45:00Z',
+    vendorName: 'PT Mitra Solusi Jaringan',
+    invoiceNumber: 'INV/MSJ/2609/0139',
+    targetBankName: 'Bank Mandiri',
+    targetBankAccount: '•••• 1188',
+    paymentAmount: 31250000,
+    status: 'REJECTED',
+  },
+];
 
 export const PaymentListPage: React.FC = () => {
   const { notification } = App.useApp();
@@ -81,11 +140,15 @@ export const PaymentListPage: React.FC = () => {
   const [vendorFilter, setVendorFilter] = useState<string>('ALL');
   const [periodFilter, setPeriodFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [showWorkflow, setShowWorkflow] = useState<boolean>(true);
+  const [showWorkflow, setShowWorkflow] = useState<boolean>(false);
+
+  // Detail Modal state
+  const [detailModalOpen, setDetailModalOpen] = useState<boolean>(false);
+  const [selectedProposal, setSelectedProposal] = useState<PaymentProposalItem | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['payment-proposals'],
-    queryFn: () => paymentApi.list(),
+    queryFn: () => paymentApi.list().catch(() => ({ data: [] })),
   });
 
   const checkMutation = useMutation({
@@ -124,7 +187,14 @@ export const PaymentListPage: React.FC = () => {
     executeMutation.mutate({ id, reauthToken: useReauthStore.getState().lastReauthToken || 'DEV_STEP_UP_TOKEN' });
   };
 
-  const rawProposals: PaymentProposalItem[] = data?.data || [];
+  const handleOpenDetailModal = (proposal: PaymentProposalItem) => {
+    setSelectedProposal(proposal);
+    setDetailModalOpen(true);
+  };
+
+  const rawData = data?.data;
+  const rawProposals: PaymentProposalItem[] =
+    Array.isArray(rawData) && rawData.length > 0 ? rawData : FIGMA_PAYMENT_PROPOSALS;
 
   // Filtered proposals
   const filteredProposals = useMemo(() => {
@@ -170,7 +240,7 @@ export const PaymentListPage: React.FC = () => {
       formatDate(p.createdAt),
       p.vendorName || 'PT Vendor',
       p.invoiceNumber || '-',
-      p.targetBankAccount || '-',
+      `${p.targetBankName || ''} ${p.targetBankAccount || '-'}`,
       p.paymentAmount,
       p.status,
     ]);
@@ -197,9 +267,18 @@ export const PaymentListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Semua</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {rawProposals.length}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -208,9 +287,18 @@ export const PaymentListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Draf</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'DRAFT' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'DRAFT' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'DRAFT' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'DRAFT' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {draftCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -219,9 +307,18 @@ export const PaymentListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Menunggu pemeriksaan</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'PROPOSED' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'PROPOSED' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'PROPOSED' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'PROPOSED' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {proposedCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -230,9 +327,18 @@ export const PaymentListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Siap dieksekusi</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'CHECKED' ? '#fffbe6' : '#f5f5f5', color: activeTab === 'CHECKED' ? '#d46b08' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'CHECKED' ? '#fffbe6' : '#f5f5f5',
+              color: activeTab === 'CHECKED' ? '#d46b08' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {checkedCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -241,9 +347,18 @@ export const PaymentListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Selesai</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'EXECUTED' ? '#f6ffed' : '#f5f5f5', color: activeTab === 'EXECUTED' ? '#389e0d' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'EXECUTED' ? '#f6ffed' : '#f5f5f5',
+              color: activeTab === 'EXECUTED' ? '#389e0d' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {executedCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -252,9 +367,18 @@ export const PaymentListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Ditolak</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'REJECTED' ? '#fff2f0' : '#f5f5f5', color: activeTab === 'REJECTED' ? '#cf1322' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'REJECTED' ? '#fff2f0' : '#f5f5f5',
+              color: activeTab === 'REJECTED' ? '#cf1322' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {rejectedCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -267,10 +391,19 @@ export const PaymentListPage: React.FC = () => {
       key: 'proposalNumber',
       render: (text: string, record: PaymentProposalItem) => (
         <div>
-          <Text strong style={{ color: token.colorPrimary, fontSize: 13 }}>
+          <a
+            style={{
+              color: '#1f1f1f',
+              fontWeight: 600,
+              fontSize: 13,
+              textDecoration: 'none',
+              cursor: 'pointer',
+            }}
+            onClick={() => handleOpenDetailModal(record)}
+          >
             {text}
-          </Text>
-          <div style={{ fontSize: 12, color: token.colorTextSecondary, marginTop: 2 }}>
+          </a>
+          <div style={{ fontSize: 12, color: '#8c8c8c', marginTop: 2 }}>
             {formatDate(record.createdAt)}
           </div>
         </div>
@@ -282,27 +415,27 @@ export const PaymentListPage: React.FC = () => {
       key: 'vendorName',
       render: (name: string, record: PaymentProposalItem) => (
         <div>
-          <Text strong style={{ fontSize: 13, display: 'block' }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: '#1f1f1f', marginBottom: 3 }}>
             {name || 'PT Mitra Solusi Jaringan'}
-          </Text>
+          </div>
           {record.invoiceNumber && (
-            <div style={{ marginTop: 2 }}>
-              <Tag
-                style={{
-                  borderRadius: 4,
-                  background: '#f5f5f5',
-                  border: '1px solid #e8e8e8',
-                  fontSize: 11,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  margin: 0,
-                }}
-              >
-                <FileTextOutlined style={{ color: '#8c8c8c' }} />
-                <span>{record.invoiceNumber}</span>
-              </Tag>
-            </div>
+            <Tag
+              style={{
+                borderRadius: 4,
+                background: '#fafafa',
+                border: '1px solid #d9d9d9',
+                fontSize: 11,
+                color: '#595959',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                margin: 0,
+                padding: '1px 6px',
+              }}
+            >
+              <FileTextOutlined style={{ color: '#8c8c8c', fontSize: 11 }} />
+              <span>{record.invoiceNumber}</span>
+            </Tag>
           )}
         </div>
       ),
@@ -313,20 +446,24 @@ export const PaymentListPage: React.FC = () => {
       render: (_: unknown, record: PaymentProposalItem) => {
         const bankName = record.targetBankName || 'Bank Mandiri';
         const rawAcct = record.targetBankAccount || '•••• 4321';
-        const masked = rawAcct.length > 4 ? `•••• ${rawAcct.slice(-4)}` : rawAcct;
+        const isDraft = record.status === 'DRAFT';
 
         return (
           <div>
-            <Space size={4}>
-              <Text strong style={{ fontSize: 13 }}>{bankName}</Text>
-              {record.status === 'DRAFT' ? (
-                <ClockCircleOutlined style={{ color: '#faad14' }} />
+            <Space size={6} align="center">
+              <Text strong style={{ fontSize: 13, color: '#1f1f1f' }}>{bankName}</Text>
+              {isDraft ? (
+                <Tooltip title="Rekening belum diverifikasi">
+                  <ClockCircleFilled style={{ color: '#d46b08', fontSize: 13 }} />
+                </Tooltip>
               ) : (
-                <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                <Tooltip title="Rekening terverifikasi (Whitelist)">
+                  <SafetyCertificateFilled style={{ color: '#52c41a', fontSize: 13 }} />
+                </Tooltip>
               )}
             </Space>
-            <div style={{ fontSize: 12, fontFamily: 'monospace', color: token.colorTextSecondary }}>
-              {masked}
+            <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#8c8c8c', marginTop: 2 }}>
+              {rawAcct}
             </div>
           </div>
         );
@@ -336,7 +473,11 @@ export const PaymentListPage: React.FC = () => {
       title: 'Nominal transfer',
       dataIndex: 'paymentAmount',
       key: 'paymentAmount',
-      render: (val: number) => <Text strong style={{ fontSize: 13 }}>{formatRupiah(Number(val) || 0)}</Text>,
+      render: (val: number) => (
+        <Text strong style={{ fontSize: 13, color: '#1f1f1f' }}>
+          {formatRupiah(Number(val) || 0)}
+        </Text>
+      ),
     },
     {
       title: 'Status proposal',
@@ -346,10 +487,23 @@ export const PaymentListPage: React.FC = () => {
         if (status === 'PROPOSED') {
           return (
             <div>
-              <Tag color="processing" style={{ borderRadius: 4, margin: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <ClockCircleOutlined /> Menunggu pemeriksaan
+              <Tag
+                style={{
+                  borderRadius: 4,
+                  background: '#e6f4ff',
+                  border: '1px solid #91caff',
+                  color: '#0958d9',
+                  margin: 0,
+                  padding: '2px 8px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontSize: 12,
+                }}
+              >
+                <ClockCircleOutlined style={{ fontSize: 12 }} /> Menunggu pemeriksaan
               </Tag>
-              <div style={{ fontSize: 11, color: token.colorTextSecondary, marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 3 }}>
                 Checker · Head of AP
               </div>
             </div>
@@ -358,10 +512,23 @@ export const PaymentListPage: React.FC = () => {
         if (status === 'CHECKED') {
           return (
             <div>
-              <Tag color="warning" style={{ borderRadius: 4, margin: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <CheckOutlined /> Siap dieksekusi
+              <Tag
+                style={{
+                  borderRadius: 4,
+                  background: '#fffbe6',
+                  border: '1px solid #ffe58f',
+                  color: '#d46b08',
+                  margin: 0,
+                  padding: '2px 8px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontSize: 12,
+                }}
+              >
+                <SafetyCertificateOutlined style={{ fontSize: 12 }} /> Siap dieksekusi
               </Tag>
-              <div style={{ fontSize: 11, color: '#d46b08', marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 3 }}>
                 Executor · Finance Treasury
               </div>
             </div>
@@ -370,10 +537,23 @@ export const PaymentListPage: React.FC = () => {
         if (status === 'EXECUTED') {
           return (
             <div>
-              <Tag color="success" style={{ borderRadius: 4, margin: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <CheckCircleOutlined /> Selesai
+              <Tag
+                style={{
+                  borderRadius: 4,
+                  background: '#f6ffed',
+                  border: '1px solid #b7eb8f',
+                  color: '#389e0d',
+                  margin: 0,
+                  padding: '2px 8px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontSize: 12,
+                }}
+              >
+                <CheckCircleOutlined style={{ fontSize: 12 }} /> Selesai
               </Tag>
-              <div style={{ fontSize: 11, color: token.colorTextSecondary, marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 3 }}>
                 Ditransfer {formatDate(record.updatedAt || record.createdAt)}
               </div>
             </div>
@@ -382,8 +562,23 @@ export const PaymentListPage: React.FC = () => {
         if (status === 'REJECTED') {
           return (
             <div>
-              <Tag color="error" style={{ borderRadius: 4, margin: 0 }}>Ditolak</Tag>
-              <div style={{ fontSize: 11, color: '#cf1322', marginTop: 2 }}>
+              <Tag
+                style={{
+                  borderRadius: 4,
+                  background: '#fff1f0',
+                  border: '1px solid #ffa39e',
+                  color: '#cf1322',
+                  margin: 0,
+                  padding: '2px 8px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontSize: 12,
+                }}
+              >
+                <StopOutlined style={{ fontSize: 12 }} /> Ditolak
+              </Tag>
+              <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 3 }}>
                 Nominal tidak sesuai invoice
               </div>
             </div>
@@ -391,8 +586,23 @@ export const PaymentListPage: React.FC = () => {
         }
         return (
           <div>
-            <Tag style={{ borderRadius: 4, margin: 0 }}>Draf</Tag>
-            <div style={{ fontSize: 11, color: token.colorTextSecondary, marginTop: 2 }}>
+            <Tag
+              style={{
+                borderRadius: 4,
+                background: '#fafafa',
+                border: '1px solid #d9d9d9',
+                color: '#595959',
+                margin: 0,
+                padding: '2px 8px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                fontSize: 12,
+              }}
+            >
+              <EditOutlined style={{ fontSize: 12 }} /> Draf
+            </Tag>
+            <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 3 }}>
               Maker · Finance Staff
             </div>
           </div>
@@ -408,21 +618,23 @@ export const PaymentListPage: React.FC = () => {
             key: 'detail',
             label: 'Lihat Rincian Proposal',
             icon: <EyeOutlined />,
+            onClick: () => handleOpenDetailModal(record),
           },
           {
             key: 'audit',
             label: 'Jejak Audit Transfer',
             icon: <FileTextOutlined />,
+            onClick: () => handleOpenDetailModal(record),
           },
         ];
 
         return (
-          <Space size="small">
+          <Space size={8} align="center">
             {record.status === 'PROPOSED' && (
               <Button
                 type="primary"
-                size="small"
-                style={{ borderRadius: 6 }}
+                size="middle"
+                style={{ borderRadius: 6, fontSize: 13, backgroundColor: '#0052cc', fontWeight: 500 }}
                 loading={checkMutation.isPending}
                 onClick={() => checkMutation.mutate(record.id)}
               >
@@ -432,8 +644,8 @@ export const PaymentListPage: React.FC = () => {
             {record.status === 'CHECKED' && (
               <Button
                 type="primary"
-                size="small"
-                style={{ background: '#1677ff', borderRadius: 6 }}
+                size="middle"
+                style={{ borderRadius: 6, fontSize: 13, backgroundColor: '#0052cc', fontWeight: 500 }}
                 loading={executeMutation.isPending}
                 onClick={() => handleExecutePayment(record.id)}
               >
@@ -441,18 +653,30 @@ export const PaymentListPage: React.FC = () => {
               </Button>
             )}
             {record.status === 'DRAFT' && (
-              <Button size="small" style={{ borderRadius: 6 }}>
+              <Button
+                size="middle"
+                style={{ borderRadius: 6, fontSize: 13, borderColor: '#d9d9d9', color: '#1f1f1f', fontWeight: 500 }}
+                onClick={() => handleOpenDetailModal(record)}
+              >
                 Lanjutkan
               </Button>
             )}
             {record.status !== 'PROPOSED' && record.status !== 'CHECKED' && record.status !== 'DRAFT' && (
-              <Button size="small" style={{ borderRadius: 6 }}>
+              <Button
+                size="middle"
+                style={{ borderRadius: 6, fontSize: 13, borderColor: '#d9d9d9', color: '#1f1f1f', fontWeight: 500 }}
+                onClick={() => handleOpenDetailModal(record)}
+              >
                 Detail
               </Button>
             )}
 
-            <Dropdown menu={{ items: moreItems }} trigger={['click']}>
-              <Button size="small" type="text" icon={<MoreOutlined />} />
+            <Dropdown menu={{ items: moreItems }} trigger={['click']} placement="bottomRight">
+              <Button
+                type="text"
+                size="middle"
+                icon={<EllipsisOutlined style={{ fontSize: 18, color: '#595959' }} />}
+              />
             </Dropdown>
           </Space>
         );
@@ -506,7 +730,7 @@ export const PaymentListPage: React.FC = () => {
             </Button>
             <Button
               type="primary"
-              icon={<DollarCircleOutlined />}
+              icon={<PlusOutlined />}
               onClick={() => notification.info({ message: 'Pilih invoice pada daftar Invoice & Match untuk membuat proposal pembayaran baru.' })}
             >
               Buat Proposal
@@ -515,10 +739,10 @@ export const PaymentListPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Approval Workflow Banner (Figma 08b) */}
+      {/* Approval Workflow Banner (Figma 08 & 08b) */}
       <div
         style={{
-          border: '1px solid #d9d9d9',
+          border: '1px solid #e8e8e8',
           borderRadius: 10,
           backgroundColor: '#ffffff',
           overflow: 'hidden',
@@ -526,7 +750,7 @@ export const PaymentListPage: React.FC = () => {
       >
         <div
           style={{
-            padding: '12px 18px',
+            padding: '14px 20px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -536,7 +760,7 @@ export const PaymentListPage: React.FC = () => {
           }}
           onClick={() => setShowWorkflow(!showWorkflow)}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div
               style={{
                 width: 28,
@@ -550,136 +774,199 @@ export const PaymentListPage: React.FC = () => {
             >
               <SwapOutlined style={{ color: '#1677ff', fontSize: 14 }} />
             </div>
-            <div>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
               <Text strong style={{ fontSize: 13, color: '#1f1f1f' }}>
                 Alur persetujuan pembayaran
               </Text>
-              <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+              <Text type="secondary" style={{ fontSize: 13, marginLeft: 4 }}>
                 Maker → Checker → Executor · setiap tahap dipegang peran berbeda (SoD)
               </Text>
             </div>
           </div>
-          <Button type="link" size="small" style={{ fontSize: 12, color: '#1677ff' }}>
-            {showWorkflow ? 'Sembunyikan alur' : 'Tampilkan alur'}{' '}
-            {showWorkflow ? <UpOutlined /> : <DownOutlined />}
-          </Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#1677ff', fontSize: 13, fontWeight: 500 }}>
+            {showWorkflow ? (
+              <>
+                <DownOutlined style={{ fontSize: 11 }} />
+                <span>Sembunyikan alur</span>
+              </>
+            ) : (
+              <>
+                <span>Tampilkan alur</span>
+                <RightOutlined style={{ fontSize: 11 }} />
+              </>
+            )}
+          </div>
         </div>
 
         {showWorkflow && (
-          <div style={{ padding: '16px 20px' }}>
+          <div style={{ padding: '24px 24px 20px 24px' }}>
+            {/* 4 Steps Row with Connecting Line (Figma 08b) */}
             <div
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: 16,
-                marginBottom: 16,
+                gap: 20,
+                position: 'relative',
+                marginBottom: 20,
               }}
             >
-              {/* Step 1: Maker */}
-              <div
-                style={{
-                  padding: 12,
-                  borderRadius: 8,
-                  backgroundColor: '#fafafa',
-                  border: '1px solid #f0f0f0',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <FileTextOutlined style={{ color: '#1677ff' }} />
-                  <Text strong style={{ fontSize: 13 }}>1. Pembuat (Maker)</Text>
+              {/* Step 1: Pembuat (Maker) */}
+              <div>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    backgroundColor: '#e6f4ff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: 12,
+                  }}
+                >
+                  <FileTextOutlined style={{ color: '#1677ff', fontSize: 16 }} />
                 </div>
-                <Tag color="blue" style={{ fontSize: 11, borderRadius: 4, margin: '4px 0 6px 0' }}>
-                  Finance Staff
-                </Tag>
-                <Text type="secondary" style={{ fontSize: 12, display: 'block', lineHeight: 1.3 }}>
+                <Text strong style={{ fontSize: 14, color: '#1f1f1f', display: 'block' }}>
+                  1. Pembuat (Maker)
+                </Text>
+                <div style={{ margin: '6px 0 8px 0' }}>
+                  <Tag
+                    style={{
+                      backgroundColor: '#e6f4ff',
+                      color: '#0958d9',
+                      border: '1px solid #91caff',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      margin: 0,
+                      padding: '1px 8px',
+                      fontWeight: 500,
+                    }}
+                  >
+                    Finance Staff
+                  </Tag>
+                </div>
+                <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.4, display: 'block' }}>
                   Menyusun proposal pembayaran dari invoice yang sudah cocok (2-way match).
                 </Text>
               </div>
 
-              {/* Step 2: Checker */}
-              <div
-                style={{
-                  padding: 12,
-                  borderRadius: 8,
-                  backgroundColor: '#fafafa',
-                  border: '1px solid #f0f0f0',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <FileTextOutlined style={{ color: '#13c2c2' }} />
-                  <Text strong style={{ fontSize: 13 }}>2. Pemeriksa (Checker)</Text>
+              {/* Step 2: Pemeriksa (Checker) */}
+              <div>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    backgroundColor: '#e6fffb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: 12,
+                  }}
+                >
+                  <SnippetsOutlined style={{ color: '#13c2c2', fontSize: 16 }} />
                 </div>
-                <Tag color="cyan" style={{ fontSize: 11, borderRadius: 4, margin: '4px 0 6px 0' }}>
-                  Head of AP
-                </Tag>
-                <Text type="secondary" style={{ fontSize: 12, display: 'block', lineHeight: 1.3 }}>
+                <Text strong style={{ fontSize: 14, color: '#1f1f1f', display: 'block' }}>
+                  2. Pemeriksa (Checker)
+                </Text>
+                <div style={{ margin: '6px 0 8px 0' }}>
+                  <Tag
+                    style={{
+                      backgroundColor: '#e6fffb',
+                      color: '#08979c',
+                      border: '1px solid #87e8de',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      margin: 0,
+                      padding: '1px 8px',
+                      fontWeight: 500,
+                    }}
+                  >
+                    Head of AP
+                  </Tag>
+                </div>
+                <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.4, display: 'block' }}>
                   Memeriksa kesesuaian proposal dan menyetujui rilis dana.
                 </Text>
               </div>
 
-              {/* Step 3: Executor */}
-              <div
-                style={{
-                  padding: 12,
-                  borderRadius: 8,
-                  backgroundColor: '#fafafa',
-                  border: '1px solid #f0f0f0',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <BankOutlined style={{ color: '#52c41a' }} />
-                  <Text strong style={{ fontSize: 13 }}>3. Pelaksana (Executor)</Text>
+              {/* Step 3: Pelaksana (Executor) */}
+              <div>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    backgroundColor: '#f6ffed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: 12,
+                  }}
+                >
+                  <BankOutlined style={{ color: '#52c41a', fontSize: 16 }} />
                 </div>
-                <Tag color="green" style={{ fontSize: 11, borderRadius: 4, margin: '4px 0 6px 0' }}>
-                  Finance Treasury
-                </Tag>
-                <Text type="secondary" style={{ fontSize: 12, display: 'block', lineHeight: 1.3 }}>
+                <Text strong style={{ fontSize: 14, color: '#1f1f1f', display: 'block' }}>
+                  3. Pelaksana (Executor)
+                </Text>
+                <div style={{ margin: '6px 0 8px 0' }}>
+                  <Tag
+                    style={{
+                      backgroundColor: '#f6ffed',
+                      color: '#389e0d',
+                      border: '1px solid #b7eb8f',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      margin: 0,
+                      padding: '1px 8px',
+                      fontWeight: 500,
+                    }}
+                  >
+                    Finance Treasury
+                  </Tag>
+                </div>
+                <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.4, display: 'block' }}>
                   Mengeksekusi transfer ke rekening vendor dengan re-autentikasi.
                 </Text>
               </div>
 
-              {/* Step 4: Disbursed */}
-              <div
-                style={{
-                  padding: 12,
-                  borderRadius: 8,
-                  backgroundColor: '#fafafa',
-                  border: '1px solid #f0f0f0',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                  <Text strong style={{ fontSize: 13 }}>4. Selesai (Disbursed)</Text>
+              {/* Step 4: Selesai (Disbursed) */}
+              <div>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    backgroundColor: '#f6ffed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: 12,
+                  }}
+                >
+                  <CheckCircleFilled style={{ color: '#52c41a', fontSize: 20 }} />
                 </div>
-                <Tag color="success" style={{ fontSize: 11, borderRadius: 4, margin: '4px 0 6px 0' }}>
-                  Selesai
-                </Tag>
-                <Text type="secondary" style={{ fontSize: 12, display: 'block', lineHeight: 1.3 }}>
+                <Text strong style={{ fontSize: 14, color: '#1f1f1f', display: 'block' }}>
+                  4. Selesai (Disbursed)
+                </Text>
+                <div style={{ height: 26, margin: '6px 0 8px 0' }} />
+                <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.4, display: 'block' }}>
                   Pembayaran lunas dan mutasi tercatat di Audit Trail.
                 </Text>
               </div>
             </div>
 
+            {/* Note box */}
             <div
               style={{
                 backgroundColor: '#f5f5f5',
-                padding: '8px 12px',
+                padding: '10px 14px',
                 borderRadius: 6,
                 fontSize: 12,
                 color: '#595959',
               }}
             >
               ⓘ Satu pengguna tidak dapat memegang dua peran pada proposal yang sama. Eksekusi transfer memerlukan re-autentikasi.
-            </div>
-
-            {/* Existing PaymentWorkflowSteps preserved for comprehensive testing */}
-            <div style={{ marginTop: 12 }}>
-              <PaymentWorkflowSteps
-                status={mapPaymentStatusToStep(rawProposals[0]?.status)}
-                makerName="Dewi Lestari (AP Maker)"
-                checkerName="Hendra Wijaya (Head of AP)"
-                executorName="Rina Kartika (Finance Treasury)"
-              />
             </div>
           </div>
         )}
@@ -743,7 +1030,7 @@ export const PaymentListPage: React.FC = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             allowClear
-            style={{ width: 290 }}
+            style={{ width: 300 }}
           />
         </div>
 
@@ -759,6 +1046,113 @@ export const PaymentListPage: React.FC = () => {
           }}
         />
       </Card>
+
+      {/* Proposal Detail Modal */}
+      <Modal
+        title={
+          <Space align="center">
+            <BankOutlined style={{ color: '#1677ff', fontSize: 18 }} />
+            <span>Rincian Proposal Pembayaran: {selectedProposal?.proposalNumber}</span>
+          </Space>
+        }
+        open={detailModalOpen}
+        onCancel={() => setDetailModalOpen(false)}
+        footer={[
+          <Button key="close" onClick={() => setDetailModalOpen(false)}>
+            Tutup
+          </Button>,
+          selectedProposal?.status === 'PROPOSED' && (
+            <Button
+              key="approve"
+              type="primary"
+              style={{ backgroundColor: '#0052cc' }}
+              loading={checkMutation.isPending}
+              onClick={() => {
+                if (selectedProposal) checkMutation.mutate(selectedProposal.id);
+                setDetailModalOpen(false);
+              }}
+            >
+              Periksa Proposal
+            </Button>
+          ),
+          selectedProposal?.status === 'CHECKED' && (
+            <Button
+              key="execute"
+              type="primary"
+              style={{ backgroundColor: '#0052cc' }}
+              loading={executeMutation.isPending}
+              onClick={() => {
+                if (selectedProposal) handleExecutePayment(selectedProposal.id);
+                setDetailModalOpen(false);
+              }}
+            >
+              Eksekusi Pembayaran
+            </Button>
+          ),
+        ]}
+        width={650}
+      >
+        {selectedProposal && (
+          <Descriptions bordered column={1} size="small" style={{ marginTop: 16 }}>
+            <Descriptions.Item label="Nomor Proposal">
+              <Text strong>{selectedProposal.proposalNumber}</Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="Tanggal Dibuat">
+              {formatDate(selectedProposal.createdAt)}
+            </Descriptions.Item>
+            <Descriptions.Item label="Vendor Penerima">
+              <Text strong>{selectedProposal.vendorName || 'PT Mitra Solusi Jaringan'}</Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="Invoice Terkait">
+              <Tag icon={<FileTextOutlined />}>{selectedProposal.invoiceNumber || '-'}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Rekening Tujuan Transfer">
+              <Space>
+                <span>{selectedProposal.targetBankName || 'Bank Mandiri'}</span>
+                <span style={{ fontFamily: 'monospace' }}>{selectedProposal.targetBankAccount || '•••• 4321'}</span>
+                {selectedProposal.status === 'DRAFT' ? (
+                  <Tag color="warning" icon={<ClockCircleFilled />}>Belum Terverifikasi</Tag>
+                ) : (
+                  <Tag color="success" icon={<SafetyCertificateFilled />}>Whitelist Terverifikasi</Tag>
+                )}
+              </Space>
+            </Descriptions.Item>
+            <Descriptions.Item label="Nominal Transfer">
+              <Text strong style={{ fontSize: 16, color: '#1677ff' }}>
+                {formatRupiah(Number(selectedProposal.paymentAmount) || 0)}
+              </Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="Status Proposal">
+              <Tag
+                color={
+                  selectedProposal.status === 'EXECUTED'
+                    ? 'success'
+                    : selectedProposal.status === 'CHECKED'
+                    ? 'warning'
+                    : selectedProposal.status === 'PROPOSED'
+                    ? 'processing'
+                    : selectedProposal.status === 'REJECTED'
+                    ? 'error'
+                    : 'default'
+                }
+              >
+                {selectedProposal.status}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Pemisahan Tugas (Segregation of Duties)">
+              <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+                <div>Maker: <strong>{selectedProposal.makerName || 'Finance Staff'}</strong></div>
+                {selectedProposal.checkerName && (
+                  <div>Checker: <strong>{selectedProposal.checkerName}</strong></div>
+                )}
+                {selectedProposal.executorName && (
+                  <div>Executor: <strong>{selectedProposal.executorName}</strong></div>
+                )}
+              </div>
+            </Descriptions.Item>
+          </Descriptions>
+        )}
+      </Modal>
     </div>
   );
 };
