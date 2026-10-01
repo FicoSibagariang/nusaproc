@@ -203,13 +203,27 @@ export const AppLayout: React.FC = () => {
       </Header>
 
       <Layout>
-        {/* Style override to ensure Ant Design Sider children wrap as flex-column and pin the collapse button */}
+        {/* Style override to ensure Ant Design Sider children wrap as flex-column, pin the collapse button, and hide group titles when collapsed (Figma 01b) */}
         <style>{`
           .app-layout-sider .ant-layout-sider-children {
             display: flex !important;
             flex-direction: column !important;
             height: 100% !important;
             overflow: hidden !important;
+          }
+          /* Hide category divider texts (PENGADAAN, PENERIMAAN, KEUANGAN, TATA KELOLA) when sidebar is collapsed (Figma 01b) */
+          .app-layout-sider.ant-layout-sider-collapsed .ant-menu-item-group-title {
+            display: none !important;
+            height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+          }
+          /* Add subtle divider line between module groups when collapsed */
+          .app-layout-sider.ant-layout-sider-collapsed .ant-menu-item-group:not(:first-child) {
+            border-top: 1px solid #f0f0f0;
+            margin-top: 6px;
+            padding-top: 6px;
           }
         `}</style>
 

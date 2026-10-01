@@ -89,5 +89,17 @@ describe('Figma UI Refinement v1: Layout, Header, Grouped Navigation & Safe Role
     expect(content).toContain('MenuFoldOutlined');
     expect(content).toContain('MenuUnfoldOutlined');
   });
+
+  it('verifies category divider titles (PENGADAAN, etc.) are hidden when sidebar is collapsed (Figma 01b)', () => {
+    const content = readFileSync(layoutPath, 'utf-8');
+
+    // Rule hiding group titles when Sider has .ant-layout-sider-collapsed
+    expect(content).toContain('.app-layout-sider.ant-layout-sider-collapsed .ant-menu-item-group-title');
+    expect(content).toContain('display: none !important;');
+
+    // Rule adding subtle divider between groups when collapsed
+    expect(content).toContain('.app-layout-sider.ant-layout-sider-collapsed .ant-menu-item-group:not(:first-child)');
+    expect(content).toContain('border-top: 1px solid #f0f0f0;');
+  });
 });
 
