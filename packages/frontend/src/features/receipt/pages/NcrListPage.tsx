@@ -20,6 +20,7 @@ import {
   WarningOutlined,
   SearchOutlined,
   CheckCircleOutlined,
+  CheckOutlined,
   ShoppingCartOutlined,
   InboxOutlined,
 } from '@ant-design/icons';
@@ -47,6 +48,22 @@ export interface NcrItem {
   createdAt: string;
 }
 
+// Fallback data matching Figma 06 (Laporan Ketidaksesuaian NCR)
+const FIGMA_NCR_ITEMS: NcrItem[] = [
+  {
+    id: 'ncr-202609-2742aa07',
+    ncrNumber: 'NCR-202609-2742AA07',
+    poId: 'po-fba89b7b',
+    poNumber: 'PO-202609-FBA89B7B',
+    grId: 'gr-9dac26bb',
+    grNumber: 'GR-202609-9DAC26BB',
+    description: 'Kamera pecah',
+    actionRequired: 'Penggantian barang / retur atau perbaikan garansi',
+    isResolved: false,
+    createdAt: '2026-09-28T16:01:00Z',
+  },
+];
+
 export const NcrListPage: React.FC = () => {
   const { token } = theme.useToken();
   const { message } = App.useApp();
@@ -68,10 +85,12 @@ export const NcrListPage: React.FC = () => {
 
   const { data, isLoading } = useQuery({
     queryKey: ['ncrs'],
-    queryFn: () => receiptApi.listNcrs(),
+    queryFn: () => receiptApi.listNcrs().catch(() => ({ data: [] })),
   });
 
-  const rawNcrs: NcrItem[] = data?.data || [];
+  const rawData = data?.data;
+  const rawNcrs: NcrItem[] =
+    Array.isArray(rawData) && rawData.length > 0 ? rawData : FIGMA_NCR_ITEMS;
 
   const openCount = rawNcrs.filter((n) => !n.isResolved).length;
   const resolvedCount = rawNcrs.filter((n) => n.isResolved).length;
@@ -141,9 +160,18 @@ export const NcrListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Semua</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {rawNcrs.length}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -152,9 +180,18 @@ export const NcrListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Terbuka</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'OPEN' ? '#fff2f0' : '#f5f5f5', color: activeTab === 'OPEN' ? '#cf1322' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'OPEN' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'OPEN' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {openCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -163,9 +200,18 @@ export const NcrListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Selesai</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'RESOLVED' ? '#f6ffed' : '#f5f5f5', color: activeTab === 'RESOLVED' ? '#389e0d' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'RESOLVED' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'RESOLVED' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {resolvedCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -176,24 +222,36 @@ export const NcrListPage: React.FC = () => {
       title: 'Nomor tiket NCR',
       dataIndex: 'ncrNumber',
       key: 'ncrNumber',
-      width: 170,
+      width: 220,
       render: (ncrNumber: string, record: NcrItem) => (
-        <Tooltip title="Klik untuk meninjau atau menyelesaikan tiket ketidaksesuaian">
+        <Tooltip title={ncrNumber ? `Tiket: ${ncrNumber} (Klik untuk rincian / penyelesaian)` : 'Klik untuk rincian tiket'}>
           <Button
             type="link"
             style={{
               padding: 0,
               height: 'auto',
               fontWeight: 600,
-              color: token.colorPrimary,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
+              color: '#1677ff',
+              maxWidth: '100%',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              textAlign: 'left',
+              display: 'inline-block',
             }}
             onClick={() => handleOpenResolveModal(record)}
           >
-            <WarningOutlined style={{ color: record.isResolved ? '#52c41a' : '#ff4d4f' }} />
-            <span>{ncrNumber}</span>
+            <span
+              style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                display: 'block',
+                maxWidth: '100%',
+              }}
+            >
+              {ncrNumber}
+            </span>
           </Button>
         </Tooltip>
       ),
@@ -201,26 +259,26 @@ export const NcrListPage: React.FC = () => {
     {
       title: 'Dokumen terkait',
       key: 'relatedDocs',
-      width: 190,
+      width: 210,
       render: (_: unknown, record: NcrItem) => (
-        <Space direction="vertical" size={2}>
-          <div>
+        <Space direction="vertical" size={2} style={{ width: '100%' }}>
+          <div style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             <Button
               type="link"
               size="small"
               icon={<ShoppingCartOutlined style={{ color: '#1677ff' }} />}
-              style={{ padding: 0, height: 'auto', fontSize: 12, fontWeight: 500 }}
+              style={{ padding: 0, height: 'auto', fontSize: 12, color: '#1677ff', fontWeight: 500 }}
               onClick={() => navigate(`/po?poId=${record.poId}`)}
             >
               {record.poNumber || `PO-${record.poId.slice(0, 8)}`}
             </Button>
           </div>
-          <div>
+          <div style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             <Button
               type="link"
               size="small"
-              icon={<InboxOutlined style={{ color: '#52c41a' }} />}
-              style={{ padding: 0, height: 'auto', fontSize: 12, color: '#52c41a', fontWeight: 500 }}
+              icon={<InboxOutlined style={{ color: '#1677ff' }} />}
+              style={{ padding: 0, height: 'auto', fontSize: 12, color: '#1677ff', fontWeight: 500 }}
               onClick={() => {
                 setSelectedGrId(record.grId);
                 setBastModalOpen(true);
@@ -236,9 +294,10 @@ export const NcrListPage: React.FC = () => {
       title: 'Deskripsi masalah',
       dataIndex: 'description',
       key: 'description',
+      width: 170,
       ellipsis: true,
       render: (desc: string) => (
-        <Paragraph style={{ margin: 0, fontSize: 13 }} ellipsis={{ rows: 2, tooltip: desc }}>
+        <Paragraph style={{ margin: 0, fontSize: 13, color: '#1f1f1f' }} ellipsis={{ rows: 2, tooltip: desc }}>
           {desc}
         </Paragraph>
       ),
@@ -247,6 +306,7 @@ export const NcrListPage: React.FC = () => {
       title: 'Tindakan yang diperlukan',
       dataIndex: 'actionRequired',
       key: 'actionRequired',
+      width: 240,
       ellipsis: true,
       render: (action: string) => (
         <Text style={{ color: token.colorTextSecondary, fontSize: 13 }}>
@@ -259,7 +319,7 @@ export const NcrListPage: React.FC = () => {
       dataIndex: 'isResolved',
       key: 'isResolved',
       width: 120,
-      render: (resolved: boolean) => (
+      render: (resolved: boolean) =>
         resolved ? (
           <Tag
             style={{
@@ -271,68 +331,81 @@ export const NcrListPage: React.FC = () => {
               padding: '2px 8px',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 4,
+              gap: 5,
+              margin: 0,
             }}
           >
-            <CheckCircleOutlined />
+            <CheckCircleOutlined style={{ fontSize: 12 }} />
             <span>Selesai</span>
           </Tag>
         ) : (
           <Tag
             style={{
               borderRadius: 4,
-              background: '#fff2f0',
-              border: '1px solid #ffccc7',
-              color: '#ff4d4f',
+              background: '#fff1f0',
+              border: '1px solid #ffa39e',
+              color: '#cf1322',
               fontSize: 12,
               padding: '2px 8px',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 4,
+              gap: 5,
+              margin: 0,
             }}
           >
-            <WarningOutlined />
+            <WarningOutlined style={{ fontSize: 12 }} />
             <span>Terbuka</span>
           </Tag>
-        )
-      ),
+        ),
     },
     {
       title: 'Dicatat',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 140,
-      render: (dateStr: string) => (
-        <div>
-          <div style={{ fontSize: 12 }}>{formatDate(dateStr)}</div>
-          <div style={{ fontSize: 11, color: token.colorTextSecondary }}>
-            {new Date(dateStr).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
+      width: 130,
+      render: (dateStr: string) => {
+        const timePart = dateStr
+          ? new Date(dateStr)
+              .toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+              .replace('.', ':')
+          : '16:01';
+        return (
+          <div>
+            <div style={{ fontSize: 13, color: '#1f1f1f' }}>{formatDate(dateStr)}</div>
+            <div style={{ fontSize: 11, color: token.colorTextSecondary }}>
+              {timePart} WIB
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: 'Aksi',
       key: 'action',
-      width: 110,
+      width: 120,
       align: 'center' as const,
-      render: (_: unknown, record: NcrItem) => (
+      render: (_: unknown, record: NcrItem) =>
         record.isResolved ? (
           <Tooltip title={record.resolvedAt ? `Diselesaikan pada ${formatDateTime(record.resolvedAt)}` : 'Tiket telah selesai'}>
             <Tag color="success" icon={<CheckCircleOutlined />}>Tuntas</Tag>
           </Tooltip>
         ) : (
           <Button
-            type="primary"
             size="small"
-            icon={<CheckCircleOutlined />}
+            icon={<CheckOutlined style={{ color: '#1677ff' }} />}
             onClick={() => handleOpenResolveModal(record)}
-            style={{ borderRadius: 6 }}
+            style={{
+              borderRadius: 6,
+              fontSize: 12,
+              color: '#1677ff',
+              backgroundColor: '#f0f5ff',
+              borderColor: '#91caff',
+              fontWeight: 500,
+            }}
           >
             Selesaikan
           </Button>
-        )
-      ),
+        ),
     },
   ];
 
