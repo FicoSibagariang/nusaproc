@@ -148,9 +148,18 @@ export const ReceiptListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Semua</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {receipts.length}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -159,9 +168,18 @@ export const ReceiptListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Gudang</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'WAREHOUSE' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'WAREHOUSE' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'WAREHOUSE' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'WAREHOUSE' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {warehouseCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -170,9 +188,18 @@ export const ReceiptListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Jasa</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'DIRECT_REQUESTER' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'DIRECT_REQUESTER' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'DIRECT_REQUESTER' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'DIRECT_REQUESTER' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {serviceCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },

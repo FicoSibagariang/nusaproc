@@ -33,7 +33,7 @@ import {
   StopOutlined,
   DownloadOutlined,
   SearchOutlined,
-  MoreOutlined,
+  EllipsisOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -229,9 +229,18 @@ export const InvoiceListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Semua</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {rawInvoices.length}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -240,9 +249,18 @@ export const InvoiceListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Perlu verifikasi</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'PENDING' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'PENDING' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'PENDING' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'PENDING' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {pendingCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -251,9 +269,18 @@ export const InvoiceListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Selisih</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'EXCEPTION' ? '#fffbe6' : '#f5f5f5', color: activeTab === 'EXCEPTION' ? '#d46b08' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'EXCEPTION' ? '#fffbe6' : '#f5f5f5',
+              color: activeTab === 'EXCEPTION' ? '#d46b08' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {exceptionCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -262,9 +289,18 @@ export const InvoiceListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Ditahan</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'HOLD' ? '#fff2f0' : '#f5f5f5', color: activeTab === 'HOLD' ? '#cf1322' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'HOLD' ? '#fff2f0' : '#f5f5f5',
+              color: activeTab === 'HOLD' ? '#cf1322' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {holdCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -273,9 +309,18 @@ export const InvoiceListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Cocok</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'MATCHED_OK' ? '#f6ffed' : '#f5f5f5', color: activeTab === 'MATCHED_OK' ? '#389e0d' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'MATCHED_OK' ? '#f6ffed' : '#f5f5f5',
+              color: activeTab === 'MATCHED_OK' ? '#389e0d' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {matchedOkCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -516,7 +561,7 @@ export const InvoiceListPage: React.FC = () => {
             )}
 
             <Dropdown menu={{ items: moreMenuItems }} trigger={['click']}>
-              <Button size="small" type="text" icon={<MoreOutlined />} />
+              <Button size="small" type="text" icon={<EllipsisOutlined style={{ fontSize: 18, color: '#595959' }} />} />
             </Dropdown>
           </Space>
         );

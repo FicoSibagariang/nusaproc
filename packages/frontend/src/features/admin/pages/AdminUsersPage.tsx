@@ -23,6 +23,7 @@ import {
 } from 'antd';
 import {
   UserAddOutlined,
+  PlusOutlined,
   SearchOutlined,
   EditOutlined,
   CheckCircleOutlined,
@@ -131,9 +132,66 @@ export const AdminUsersPage: React.FC = () => {
   }, [rawUsers]);
 
   const statusTabItems = [
-    { key: 'ALL', label: `Semua Pengguna (${tabCounts.ALL})` },
-    { key: 'ACTIVE', label: `Aktif (${tabCounts.ACTIVE})` },
-    { key: 'INACTIVE', label: `Nonaktif (${tabCounts.INACTIVE})` },
+    {
+      key: 'ALL',
+      label: (
+        <Space size={6}>
+          <span>Semua Pengguna</span>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
+            {tabCounts.ALL}
+          </span>
+        </Space>
+      ),
+    },
+    {
+      key: 'ACTIVE',
+      label: (
+        <Space size={6}>
+          <span>Aktif</span>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'ACTIVE' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'ACTIVE' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
+            {tabCounts.ACTIVE}
+          </span>
+        </Space>
+      ),
+    },
+    {
+      key: 'INACTIVE',
+      label: (
+        <Space size={6}>
+          <span>Nonaktif</span>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'INACTIVE' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'INACTIVE' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
+            {tabCounts.INACTIVE}
+          </span>
+        </Space>
+      ),
+    },
   ];
 
   // Mutations
@@ -432,12 +490,8 @@ export const AdminUsersPage: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Breadcrumb Navigation (Figma 10) */}
       <Breadcrumb
-        items={[
-          { title: <a href="/">Beranda</a> },
-          { title: 'Tata Kelola & Sistem' },
-          { title: 'Manajemen Pengguna' },
-        ]}
-        style={{ marginBottom: 4 }}
+        items={[{ title: 'Tata Kelola' }, { title: 'Manajemen Pengguna' }]}
+        style={{ marginBottom: 12, fontSize: 13 }}
       />
 
       {/* Header Row */}
@@ -478,7 +532,7 @@ export const AdminUsersPage: React.FC = () => {
         <Space wrap>
           <Button
             type="primary"
-            icon={<UserAddOutlined />}
+            icon={<PlusOutlined />}
             onClick={() => setIsCreateModalOpen(true)}
           >
             Tambah Pengguna Baru
@@ -494,8 +548,16 @@ export const AdminUsersPage: React.FC = () => {
         style={{ marginBottom: -8 }}
       />
 
-      {/* Filter & Search Bar */}
-      <Card styles={{ body: { padding: '12px 16px' } }} style={{ border: '1px solid #f0f0f0', borderRadius: 8 }}>
+      {/* Main Users Table Card with Filter Row */}
+      <Card
+        bordered={false}
+        style={{
+          borderRadius: 12,
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+          border: '1px solid #f0f0f0',
+        }}
+      >
+        {/* Filter Bar */}
         <div
           style={{
             display: 'flex',
@@ -503,6 +565,7 @@ export const AdminUsersPage: React.FC = () => {
             alignItems: 'center',
             flexWrap: 'wrap',
             gap: 12,
+            marginBottom: 20,
           }}
         >
           <Space wrap size="middle">
@@ -554,10 +617,7 @@ export const AdminUsersPage: React.FC = () => {
             </Button>
           </Space>
         </div>
-      </Card>
 
-      {/* Main Users Table */}
-      <Card styles={{ body: { padding: 0 } }} style={{ border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden' }}>
         <Table<UserItem>
           dataSource={filteredUsers}
           columns={columns}
@@ -567,7 +627,7 @@ export const AdminUsersPage: React.FC = () => {
           pagination={{
             pageSize: 10,
             showSizeChanger: true,
-            showTotal: (total, range) => `Menampilkan ${range[0]} - ${range[1]} dari total ${total} pengguna`,
+            showTotal: (total, range) => `Menampilkan ${range[0]}–${range[1]} dari ${total} pengguna`,
           }}
         />
       </Card>

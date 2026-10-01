@@ -15,8 +15,8 @@ describe('Phase 6: Governance, User Management, Organization & Feedback UI Refin
     it('contains Figma 09 Breadcrumb navigation and Page Title', () => {
       const content = readFileSync(pagePath, 'utf-8');
       expect(content).toContain('Breadcrumb');
-      expect(content).toContain('Tata Kelola & Kepatuhan');
-      expect(content).toContain('Audit Trail & Kriptografi');
+      expect(content).toContain('Tata Kelola');
+      expect(content).toContain('Audit Trail');
       expect(content).toContain('Audit Trail & Kepatuhan Kriptografis (R51–R55)');
     });
 
@@ -53,7 +53,7 @@ describe('Phase 6: Governance, User Management, Organization & Feedback UI Refin
     it('contains Figma 10 Breadcrumb navigation and Page Title', () => {
       const content = readFileSync(pagePath, 'utf-8');
       expect(content).toContain('Breadcrumb');
-      expect(content).toContain('Tata Kelola & Sistem');
+      expect(content).toContain('Tata Kelola');
       expect(content).toContain('Manajemen Pengguna');
       expect(content).toContain('Manajemen Pengguna & Hak Akses (US12)');
     });
@@ -87,8 +87,8 @@ describe('Phase 6: Governance, User Management, Organization & Feedback UI Refin
     it('contains Figma 11 Breadcrumb navigation and Page Title', () => {
       const content = readFileSync(pagePath, 'utf-8');
       expect(content).toContain('Breadcrumb');
-      expect(content).toContain('Master Data');
-      expect(content).toContain('Kantor Cabang & Divisi');
+      expect(content).toContain('Tata Kelola');
+      expect(content).toContain('Master Cabang & Divisi');
       expect(content).toContain('Master Organisasi: Cabang & Divisi');
     });
 
@@ -110,8 +110,8 @@ describe('Phase 6: Governance, User Management, Organization & Feedback UI Refin
       expect(existsSync(feedbackPagePath)).toBe(true);
       const content = readFileSync(feedbackPagePath, 'utf-8');
       expect(content).toContain('Breadcrumb');
-      expect(content).toContain('Tata Kelola & Sistem');
-      expect(content).toContain('Masukan & Laporan Kendala');
+      expect(content).toContain('Tata Kelola');
+      expect(content).toContain('Masukan & Laporan');
       expect(content).toContain('Pusat Masukan & Laporan Kendala (Feedback)');
       expect(content).toContain('Tindak Lanjut & Triage Administrator');
       expect(content).toContain('scroll={{ x: 1100 }}');

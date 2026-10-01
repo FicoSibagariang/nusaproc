@@ -20,7 +20,10 @@ import {
   Tabs,
   Breadcrumb,
   Popover,
+  Dropdown,
+  Descriptions,
   type TableProps,
+  type MenuProps,
 } from 'antd';
 import {
   ShopOutlined,
@@ -36,6 +39,7 @@ import {
   ClockCircleOutlined,
   EyeOutlined,
   InfoCircleOutlined,
+  EllipsisOutlined,
   MoreOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -150,6 +154,7 @@ export const VendorListPage: React.FC = () => {
   const [isAddBankOpen, setIsAddBankOpen] = useState(false);
   const [isVerifyBankOpen, setIsVerifyBankOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState<VendorDisplayItem | null>(null);
   const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
 
@@ -423,9 +428,18 @@ export const VendorListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Semua</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {vendors.length}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -434,9 +448,18 @@ export const VendorListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Disetujui</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'APPROVED' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'APPROVED' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'APPROVED' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'APPROVED' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {approvedCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -445,9 +468,18 @@ export const VendorListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Prospek</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'PROSPECTIVE' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'PROSPECTIVE' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'PROSPECTIVE' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'PROSPECTIVE' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {prospectiveCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -705,55 +737,79 @@ export const VendorListPage: React.FC = () => {
     {
       title: 'Aksi',
       key: 'actions',
-      width: 140,
-      render: (_, r) => (
-        <Space size="small">
-          <Tooltip title="Ubah Status Vendor (R65)">
-            <Button
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => {
-                setSelectedVendor(r);
-                statusForm.setFieldsValue({
-                  status: r.status,
-                  reason: '',
-                });
-                setIsStatusModalOpen(true);
-              }}
-            />
-          </Tooltip>
-          <Tooltip title="Tambah Rekening Baru">
-            <Button
-              size="small"
-              icon={<BankOutlined />}
-              onClick={() => {
-                setSelectedVendor(r);
-                setIsAddBankOpen(true);
-              }}
-            />
-          </Tooltip>
-          <Popconfirm
-            title="Hapus Vendor?"
-            description={
-              <div style={{ maxWidth: 260 }}>
-                Vendor hanya dapat dihapus jika <b>belum memiliki riwayat transaksi</b> (PO / Invoice). Lanjutkan?
-              </div>
-            }
-            onConfirm={() => deleteVendorMutation.mutate(r.id)}
-            okText="Ya, Hapus"
-            cancelText="Batal"
-            okButtonProps={{ danger: true, loading: deleteVendorMutation.isPending }}
-          >
-            <Tooltip title="Hapus Vendor">
+      width: 100,
+      render: (_, r) => {
+        const actionMenuItems: MenuProps['items'] = [
+          {
+            key: 'status',
+            label: 'Ubah Status Vendor (R65)',
+            icon: <EditOutlined />,
+            onClick: () => {
+              setSelectedVendor(r);
+              statusForm.setFieldsValue({
+                status: r.status,
+                reason: '',
+              });
+              setIsStatusModalOpen(true);
+            },
+          },
+          {
+            key: 'bank',
+            label: 'Tambah Rekening Bank',
+            icon: <BankOutlined />,
+            onClick: () => {
+              setSelectedVendor(r);
+              setIsAddBankOpen(true);
+            },
+          },
+          {
+            type: 'divider',
+          },
+          {
+            key: 'delete',
+            label: 'Hapus Vendor',
+            icon: <DeleteOutlined />,
+            danger: true,
+            onClick: () => {
+              Modal.confirm({
+                title: 'Hapus Vendor?',
+                content: (
+                  <div style={{ maxWidth: 280 }}>
+                    Vendor hanya dapat dihapus jika <b>belum memiliki riwayat transaksi</b> (PO / Invoice). Lanjutkan menghapus vendor {r.name}?
+                  </div>
+                ),
+                okText: 'Ya, Hapus',
+                okButtonProps: { danger: true },
+                cancelText: 'Batal',
+                onOk: () => deleteVendorMutation.mutate(r.id),
+              });
+            },
+          },
+        ];
+
+        return (
+          <Space size={4} align="center">
+            <Tooltip title="Lihat Profil Vendor">
               <Button
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
+                type="text"
+                size="middle"
+                icon={<InfoCircleOutlined style={{ fontSize: 16, color: '#595959' }} />}
+                onClick={() => {
+                  setSelectedVendor(r);
+                  setIsDetailModalOpen(true);
+                }}
               />
             </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
+            <Dropdown menu={{ items: actionMenuItems }} trigger={['click']} placement="bottomRight">
+              <Button
+                type="text"
+                size="middle"
+                icon={<EllipsisOutlined style={{ fontSize: 18, color: '#595959' }} />}
+              />
+            </Dropdown>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -1194,6 +1250,95 @@ export const VendorListPage: React.FC = () => {
             />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Modal: Lihat Profil Vendor */}
+      <Modal
+        title={
+          <Space align="center">
+            <ShopOutlined style={{ color: '#1677ff', fontSize: 18 }} />
+            <span>Rincian Rekanan Vendor: {selectedVendor?.name}</span>
+          </Space>
+        }
+        open={isDetailModalOpen}
+        onCancel={() => setIsDetailModalOpen(false)}
+        footer={[
+          <Button key="close" onClick={() => setIsDetailModalOpen(false)}>
+            Tutup
+          </Button>,
+          <Button
+            key="editStatus"
+            type="primary"
+            style={{ backgroundColor: '#0052cc' }}
+            onClick={() => {
+              setIsDetailModalOpen(false);
+              if (selectedVendor) {
+                statusForm.setFieldsValue({
+                  status: selectedVendor.status,
+                  reason: '',
+                });
+                setIsStatusModalOpen(true);
+              }
+            }}
+          >
+            Ubah Status
+          </Button>,
+        ]}
+        width={600}
+      >
+        {selectedVendor && (
+          <Descriptions bordered column={1} size="small" style={{ marginTop: 16 }}>
+            <Descriptions.Item label="Kode Vendor">
+              <Text strong>{selectedVendor.vendorCode}</Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="Nama Resmi Perusahaan">
+              <Text strong style={{ fontSize: 14 }}>{selectedVendor.name}</Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="NPWP">
+              <Space>
+                <Text style={{ fontFamily: 'monospace' }}>{maskNpwp(selectedVendor.taxIdentificationNumber)}</Text>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<CopyOutlined style={{ color: '#8c8c8c' }} />}
+                  onClick={() => handleCopyNpwp(selectedVendor.taxIdentificationNumber)}
+                />
+              </Space>
+            </Descriptions.Item>
+            <Descriptions.Item label="Status PKP">
+              <Tag color={selectedVendor.isPkp ? 'blue' : 'default'}>
+                {selectedVendor.isPkp ? 'PKP (Pengusaha Kena Pajak)' : 'Non-PKP'}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Status Operasional">
+              <Tag
+                color={
+                  selectedVendor.status === 'APPROVED'
+                    ? 'success'
+                    : selectedVendor.status === 'SUSPENDED'
+                    ? 'warning'
+                    : selectedVendor.status === 'BLACKLISTED'
+                    ? 'error'
+                    : 'default'
+                }
+              >
+                {selectedVendor.status}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Rekening Bank Terdaftar">
+              <div>
+                {(selectedVendor.bankAccounts || []).map((b) => (
+                  <div key={b.id} style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <BankOutlined style={{ color: '#52c41a' }} />
+                    <span style={{ fontWeight: 500 }}>{b.bankName}</span>
+                    <span style={{ fontFamily: 'monospace', color: '#595959' }}>{b.accountNumber}</span>
+                    <span style={{ color: '#8c8c8c' }}>a.n. {b.accountHolderName}</span>
+                  </div>
+                ))}
+              </div>
+            </Descriptions.Item>
+          </Descriptions>
+        )}
       </Modal>
     </div>
   );

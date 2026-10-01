@@ -343,12 +343,8 @@ export const AdminFeedbackPage: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Breadcrumb Navigation (Figma 12) */}
       <Breadcrumb
-        items={[
-          { title: <a href="/">Beranda</a> },
-          { title: 'Tata Kelola & Sistem' },
-          { title: 'Masukan & Laporan Kendala' },
-        ]}
-        style={{ marginBottom: 4 }}
+        items={[{ title: 'Tata Kelola' }, { title: 'Masukan & Laporan' }]}
+        style={{ marginBottom: 12, fontSize: 13 }}
       />
 
       {/* Header Row */}
@@ -404,8 +400,16 @@ export const AdminFeedbackPage: React.FC = () => {
         style={{ marginBottom: -8 }}
       />
 
-      {/* Filter & Search Bar */}
-      <Card styles={{ body: { padding: '12px 16px' } }} style={{ border: '1px solid #f0f0f0', borderRadius: 8 }}>
+      {/* Main Feedback Table Card with Filter Row */}
+      <Card
+        bordered={false}
+        style={{
+          borderRadius: 12,
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+          border: '1px solid #f0f0f0',
+        }}
+      >
+        {/* Filter Bar */}
         <div
           style={{
             display: 'flex',
@@ -413,6 +417,7 @@ export const AdminFeedbackPage: React.FC = () => {
             alignItems: 'center',
             flexWrap: 'wrap',
             gap: 12,
+            marginBottom: 20,
           }}
         >
           <Space wrap size="middle">
@@ -450,10 +455,7 @@ export const AdminFeedbackPage: React.FC = () => {
             </Button>
           </Space>
         </div>
-      </Card>
 
-      {/* Main Feedback Table */}
-      <Card styles={{ body: { padding: 0 } }} style={{ border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden' }}>
         <Table<FeedbackItem>
           rowKey="id"
           columns={columns}
@@ -465,7 +467,7 @@ export const AdminFeedbackPage: React.FC = () => {
             pageSize,
             total,
             showSizeChanger: true,
-            showTotal: (totalCount, range) => `Menampilkan ${range[0]} - ${range[1]} dari total ${totalCount} masukan`,
+            showTotal: (totalCount, range) => `Menampilkan ${range[0]}–${range[1]} dari ${totalCount} masukan`,
             onChange: (p, s) => {
               setCurrentPage(p);
               setPageSize(s);

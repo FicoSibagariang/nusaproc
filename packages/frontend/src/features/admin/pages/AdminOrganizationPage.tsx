@@ -421,19 +421,43 @@ export const AdminOrganizationPage: React.FC = () => {
     {
       key: 'branches',
       label: (
-        <span>
-          <BankOutlined style={{ marginRight: 6 }} />
-          Kantor Cabang ({branches.length})
-        </span>
+        <Space size={6}>
+          <BankOutlined />
+          <span>Kantor Cabang</span>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'branches' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'branches' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
+            {branches.length}
+          </span>
+        </Space>
       ),
     },
     {
       key: 'divisions',
       label: (
-        <span>
-          <ApartmentOutlined style={{ marginRight: 6 }} />
-          Unit Divisi ({divisions.length})
-        </span>
+        <Space size={6}>
+          <ApartmentOutlined />
+          <span>Unit Divisi</span>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'divisions' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'divisions' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
+            {divisions.length}
+          </span>
+        </Space>
       ),
     },
   ];
@@ -442,12 +466,8 @@ export const AdminOrganizationPage: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Breadcrumb Navigation (Figma 11) */}
       <Breadcrumb
-        items={[
-          { title: <a href="/">Beranda</a> },
-          { title: 'Master Data' },
-          { title: 'Kantor Cabang & Divisi' },
-        ]}
-        style={{ marginBottom: 4 }}
+        items={[{ title: 'Tata Kelola' }, { title: 'Master Cabang & Divisi' }]}
+        style={{ marginBottom: 12, fontSize: 13 }}
       />
 
       {/* Header Row */}
@@ -514,8 +534,16 @@ export const AdminOrganizationPage: React.FC = () => {
         style={{ marginBottom: -8 }}
       />
 
-      {/* Filter & Action Card */}
-      <Card styles={{ body: { padding: '12px 16px' } }} style={{ border: '1px solid #f0f0f0', borderRadius: 8 }}>
+      {/* Main Organization Table Card with Filter Row */}
+      <Card
+        bordered={false}
+        style={{
+          borderRadius: 12,
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+          border: '1px solid #f0f0f0',
+        }}
+      >
+        {/* Filter Bar */}
         <div
           style={{
             display: 'flex',
@@ -523,6 +551,7 @@ export const AdminOrganizationPage: React.FC = () => {
             alignItems: 'center',
             flexWrap: 'wrap',
             gap: 12,
+            marginBottom: 20,
           }}
         >
           {activeTab === 'branches' ? (
@@ -591,10 +620,7 @@ export const AdminOrganizationPage: React.FC = () => {
             </Button>
           </Space>
         </div>
-      </Card>
 
-      {/* Table Content */}
-      <Card styles={{ body: { padding: 0 } }} style={{ border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden' }}>
         {activeTab === 'branches' ? (
           <Table<BranchItem>
             columns={branchColumns}
@@ -605,7 +631,7 @@ export const AdminOrganizationPage: React.FC = () => {
             pagination={{
               pageSize: 10,
               showSizeChanger: true,
-              showTotal: (total, range) => `Menampilkan ${range[0]} - ${range[1]} dari total ${total} kantor cabang`,
+              showTotal: (total, range) => `Menampilkan ${range[0]}–${range[1]} dari ${total} kantor cabang`,
             }}
           />
         ) : (
@@ -618,7 +644,7 @@ export const AdminOrganizationPage: React.FC = () => {
             pagination={{
               pageSize: 10,
               showSizeChanger: true,
-              showTotal: (total, range) => `Menampilkan ${range[0]} - ${range[1]} dari total ${total} unit divisi`,
+              showTotal: (total, range) => `Menampilkan ${range[0]}–${range[1]} dari ${total} unit divisi`,
             }}
           />
         )}

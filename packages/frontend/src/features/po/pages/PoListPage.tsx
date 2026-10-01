@@ -297,9 +297,18 @@ export const PoListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Semua</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {poData.length}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -308,9 +317,18 @@ export const PoListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Draft</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'DRAFT' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'DRAFT' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'DRAFT' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'DRAFT' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {draftCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -319,9 +337,18 @@ export const PoListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Diterbitkan</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'ISSUED' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'ISSUED' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'ISSUED' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'ISSUED' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {issuedCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -330,9 +357,18 @@ export const PoListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Selesai Penuh</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'COMPLETED' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'COMPLETED' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'COMPLETED' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'COMPLETED' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {completedCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -341,9 +377,18 @@ export const PoListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Dibatalkan</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'CANCELLED' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'CANCELLED' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'CANCELLED' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'CANCELLED' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {cancelledCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },

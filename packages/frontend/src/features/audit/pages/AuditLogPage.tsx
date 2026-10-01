@@ -217,12 +217,126 @@ export const AuditLogPage: React.FC = () => {
   }, [rawEntries]);
 
   const tabItems = [
-    { key: 'ALL', label: `Semua Entri (${tabCounts.ALL})` },
-    { key: 'PR', label: `Purchase Request (${tabCounts.PR})` },
-    { key: 'PO', label: `Purchase Order (${tabCounts.PO})` },
-    { key: 'RECEIPT_NCR', label: `Penerimaan & NCR (${tabCounts.RECEIPT_NCR})` },
-    { key: 'INVOICE_VENDOR', label: `Faktur & Vendor (${tabCounts.INVOICE_VENDOR})` },
-    { key: 'PAYMENT', label: `Pembayaran (${tabCounts.PAYMENT})` },
+    {
+      key: 'ALL',
+      label: (
+        <Space size={6}>
+          <span>Semua Entri</span>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
+            {tabCounts.ALL}
+          </span>
+        </Space>
+      ),
+    },
+    {
+      key: 'PR',
+      label: (
+        <Space size={6}>
+          <span>Purchase Request</span>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'PR' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'PR' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
+            {tabCounts.PR}
+          </span>
+        </Space>
+      ),
+    },
+    {
+      key: 'PO',
+      label: (
+        <Space size={6}>
+          <span>Purchase Order</span>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'PO' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'PO' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
+            {tabCounts.PO}
+          </span>
+        </Space>
+      ),
+    },
+    {
+      key: 'RECEIPT_NCR',
+      label: (
+        <Space size={6}>
+          <span>Penerimaan & NCR</span>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'RECEIPT_NCR' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'RECEIPT_NCR' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
+            {tabCounts.RECEIPT_NCR}
+          </span>
+        </Space>
+      ),
+    },
+    {
+      key: 'INVOICE_VENDOR',
+      label: (
+        <Space size={6}>
+          <span>Faktur & Vendor</span>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'INVOICE_VENDOR' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'INVOICE_VENDOR' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
+            {tabCounts.INVOICE_VENDOR}
+          </span>
+        </Space>
+      ),
+    },
+    {
+      key: 'PAYMENT',
+      label: (
+        <Space size={6}>
+          <span>Pembayaran</span>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'PAYMENT' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'PAYMENT' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
+            {tabCounts.PAYMENT}
+          </span>
+        </Space>
+      ),
+    },
   ];
 
   const handleDownloadBundle = async (entityName = 'purchase_order', entityId = '50000000-0000-0000-0000-000000000001') => {
@@ -478,12 +592,8 @@ export const AuditLogPage: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Breadcrumb Navigation (Figma 09) */}
       <Breadcrumb
-        items={[
-          { title: <a href="/">Beranda</a> },
-          { title: 'Tata Kelola & Kepatuhan' },
-          { title: 'Audit Trail & Kriptografi' },
-        ]}
-        style={{ marginBottom: 4 }}
+        items={[{ title: 'Tata Kelola' }, { title: 'Audit Trail' }]}
+        style={{ marginBottom: 12, fontSize: 13 }}
       />
 
       {/* Header Row */}
@@ -629,8 +739,16 @@ export const AuditLogPage: React.FC = () => {
         style={{ marginBottom: -8 }}
       />
 
-      {/* Filter & Search Bar */}
-      <Card styles={{ body: { padding: '12px 16px' } }} style={{ border: '1px solid #f0f0f0', borderRadius: 8 }}>
+      {/* Main Table Card with Filter Row */}
+      <Card
+        bordered={false}
+        style={{
+          borderRadius: 12,
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+          border: '1px solid #f0f0f0',
+        }}
+      >
+        {/* Filter Bar */}
         <div
           style={{
             display: 'flex',
@@ -638,6 +756,7 @@ export const AuditLogPage: React.FC = () => {
             alignItems: 'center',
             flexWrap: 'wrap',
             gap: 12,
+            marginBottom: 20,
           }}
         >
           <Space wrap size="middle">
@@ -689,10 +808,7 @@ export const AuditLogPage: React.FC = () => {
             </Button>
           </Space>
         </div>
-      </Card>
 
-      {/* Main Audit Trail Table */}
-      <Card styles={{ body: { padding: 0 } }} style={{ border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden' }}>
         <Table<AuditTrailItem>
           columns={columns}
           dataSource={filteredEntries}
@@ -702,7 +818,7 @@ export const AuditLogPage: React.FC = () => {
           pagination={{
             pageSize: 10,
             showSizeChanger: true,
-            showTotal: (total, range) => `Menampilkan ${range[0]} - ${range[1]} dari total ${total} entri audit`,
+            showTotal: (total, range) => `Menampilkan ${range[0]}–${range[1]} dari ${total} entri audit`,
           }}
         />
       </Card>

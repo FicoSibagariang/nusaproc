@@ -259,9 +259,18 @@ export const PrListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Semua</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'ALL' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'ALL' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {prList.length}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -270,9 +279,18 @@ export const PrListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Menunggu Persetujuan</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'SUBMITTED' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'SUBMITTED' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'SUBMITTED' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'SUBMITTED' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {submittedCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -281,9 +299,18 @@ export const PrListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Disetujui</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'APPROVED' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'APPROVED' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'APPROVED' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'APPROVED' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {approvedCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -292,9 +319,18 @@ export const PrListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Draft</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'DRAFT' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'DRAFT' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'DRAFT' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'DRAFT' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {draftCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
@@ -303,9 +339,18 @@ export const PrListPage: React.FC = () => {
       label: (
         <Space size={6}>
           <span>Ditolak</span>
-          <Tag style={{ margin: 0, borderRadius: 10, fontSize: 11, padding: '0 6px', background: activeTab === 'REJECTED' ? '#e6f4ff' : '#f5f5f5', color: activeTab === 'REJECTED' ? '#0958d9' : '#8c8c8c', border: 'none' }}>
+          <span
+            style={{
+              borderRadius: 10,
+              fontSize: 12,
+              padding: '1px 7px',
+              background: activeTab === 'REJECTED' ? '#e6f4ff' : '#f5f5f5',
+              color: activeTab === 'REJECTED' ? '#0958d9' : '#8c8c8c',
+              fontWeight: 500,
+            }}
+          >
             {rejectedCount}
-          </Tag>
+          </span>
         </Space>
       ),
     },
