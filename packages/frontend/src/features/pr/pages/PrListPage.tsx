@@ -20,12 +20,15 @@ import {
   PlusOutlined,
   SendOutlined,
   CheckCircleOutlined,
+  CheckCircleFilled,
+  ClockCircleOutlined,
   CloseCircleOutlined,
   ShoppingCartOutlined,
   FileTextOutlined,
   EyeOutlined,
   DownloadOutlined,
   SearchOutlined,
+  InboxOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -316,25 +319,20 @@ export const PrListPage: React.FC = () => {
       render: (text: string, record: PurchaseRequestRow) => (
         <div>
           <Tooltip title="Klik untuk melihat rincian lengkap dokumen PR">
-            <Button
-              type="link"
+            <span
               style={{
-                padding: 0,
+                color: '#0052cc',
                 fontWeight: 600,
-                height: 'auto',
-                color: token.colorPrimary,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
+                cursor: 'pointer',
+                fontSize: 13,
               }}
               onClick={() => {
                 setSelectedDetailPrId(record.id);
                 setDetailModalOpen(true);
               }}
             >
-              <FileTextOutlined />
-              <span>{text}</span>
-            </Button>
+              {text}
+            </span>
           </Tooltip>
           <div style={{ fontSize: 12, color: token.colorTextSecondary, marginTop: 2 }}>
             {formatDate(record.createdAt)}
@@ -343,86 +341,61 @@ export const PrListPage: React.FC = () => {
       ),
     },
     {
-      title: 'Tgl Pengajuan',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      width: 130,
-      render: (date: string) => <Text>{formatDate(date)}</Text>,
+      title: 'Pemohon',
+      key: 'requester',
+      render: (_: unknown, record: PurchaseRequestRow) => (
+        <div>
+          <Text strong style={{ fontSize: 13, display: 'block', lineHeight: 1.3, color: '#1f1f1f' }}>
+            {record.requesterName || record.requesterEmail || 'Requester'}
+          </Text>
+          {record.requesterEmail && (
+            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 2 }}>
+              {record.requesterEmail}
+            </Text>
+          )}
+        </div>
+      ),
     },
     {
-      title: 'Pemohon (Requester)',
-      key: 'requester',
+      title: 'Divisi',
+      key: 'division',
       render: (_: unknown, record: PurchaseRequestRow) => {
-        const initials = getInitials(record.requesterName, record.requesterEmail);
+        const divisionCode = record.divisionId || record.divisionName || '-';
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: '50%',
-                backgroundColor: '#e6f4ff',
-                color: '#0958d9',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 600,
-                fontSize: 12,
-                flexShrink: 0,
-              }}
-            >
-              {initials}
-            </div>
-            <div>
-              <Text strong style={{ fontSize: 13, display: 'block', lineHeight: 1.2 }}>
-                {record.requesterName || record.requesterEmail || 'Requester'}
-              </Text>
-              {record.requesterEmail && record.requesterName && (
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  {record.requesterEmail}
-                </Text>
-              )}
-            </div>
+          <div>
+            <Text strong style={{ fontSize: 13, display: 'block', lineHeight: 1.3, color: '#1f1f1f' }}>
+              {divisionCode}
+            </Text>
+            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 2 }}>
+              {record.costCenter || '-'}
+            </Text>
           </div>
         );
       },
     },
     {
-      title: 'Divisi & Unit Pengaju',
-      key: 'division',
-      render: (_: unknown, record: PurchaseRequestRow) => {
-        const resolvedName =
-          record.divisionName ||
-          divisionNameMap.get(record.divisionId) ||
-          FALLBACK_DIVISION_NAMES[record.divisionId] ||
-          record.divisionId ||
-          '-';
-
-        return (
-          <Space direction="vertical" size={2}>
-            <Text strong style={{ fontSize: 13 }}>{resolvedName}</Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {record.costCenter ? `Cost Center: ${record.costCenter}` : (record.divisionId ? `Kode: ${record.divisionId}` : '')}
-            </Text>
-          </Space>
-        );
+      title: 'Termin bayar',
+      dataIndex: 'paymentTermType',
+      key: 'paymentTermType',
+      render: (term: string) => {
+        const label =
+          term === 'PAY_AFTER_RECEIPT'
+            ? 'Pay After Receipt'
+            : term === 'ADVANCE'
+            ? 'Advance'
+            : term || 'Pay After Receipt';
+        return <Text style={{ fontSize: 13, color: '#262626' }}>{label}</Text>;
       },
     },
     {
-      title: 'Termin Bayar',
-      dataIndex: 'paymentTermType',
-      key: 'paymentTermType',
-      render: (term: string) => (
-        <Tag color={term === 'PAY_AFTER_RECEIPT' ? 'blue' : 'orange'}>
-          {term === 'PAY_AFTER_RECEIPT' ? 'Pay After Receipt' : 'Advance / COD'}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Estimasi Nilai',
+      title: 'Estimasi nilai',
       dataIndex: 'totalEstimatedAmount',
       key: 'totalEstimatedAmount',
-      render: (val: number) => <Text strong>{formatRupiah(Number(val) || 0)}</Text>,
+      render: (val: number) => (
+        <Text strong style={{ fontSize: 13, color: '#1f1f1f' }}>
+          {formatRupiah(Number(val) || 0)}
+        </Text>
+      ),
     },
     {
       title: 'Status',
@@ -436,22 +409,102 @@ export const PrListPage: React.FC = () => {
 
         return (
           <Space direction="vertical" size={4}>
-            <StatusTag status={status} category="pr" />
+            {status === 'APPROVED' ? (
+              <Tag
+                color="success"
+                icon={<CheckCircleFilled style={{ color: '#52c41a' }} />}
+                style={{
+                  borderRadius: 6,
+                  fontSize: 11,
+                  padding: '1px 8px',
+                  margin: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                Disetujui
+              </Tag>
+            ) : status === 'SUBMITTED' ? (
+              <Tag
+                color="processing"
+                icon={<ClockCircleOutlined />}
+                style={{ borderRadius: 6, fontSize: 11, padding: '1px 8px', margin: 0 }}
+              >
+                Menunggu Persetujuan
+              </Tag>
+            ) : status === 'DRAFT' ? (
+              <Tag
+                style={{
+                  borderRadius: 6,
+                  fontSize: 11,
+                  padding: '1px 8px',
+                  margin: 0,
+                  backgroundColor: '#f5f5f5',
+                  color: '#595959',
+                }}
+              >
+                Draft
+              </Tag>
+            ) : (
+              <Tag
+                color="error"
+                icon={<CloseCircleOutlined />}
+                style={{ borderRadius: 6, fontSize: 11, padding: '1px 8px', margin: 0 }}
+              >
+                Ditolak
+              </Tag>
+            )}
+
             {isApproved && (
               isFullyOrdered ? (
                 <Tag
-                  color="cyan"
-                  icon={<CheckCircleOutlined />}
-                  style={{ borderRadius: 6, fontSize: 11, margin: 0 }}
+                  style={{
+                    borderRadius: 6,
+                    fontSize: 11,
+                    padding: '1px 8px',
+                    margin: 0,
+                    backgroundColor: '#e6fffb',
+                    borderColor: '#87e8de',
+                    color: '#08979c',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
                 >
-                  PO Terpenuhi
+                  <InboxOutlined style={{ fontSize: 12 }} />
+                  <span>PO Terpenuhi</span>
                 </Tag>
               ) : record.relatedPos && record.relatedPos.length > 0 ? (
-                <Tag color="blue" style={{ borderRadius: 6, fontSize: 11, margin: 0 }}>
-                  PO Sebagian
+                <Tag
+                  style={{
+                    borderRadius: 6,
+                    fontSize: 11,
+                    padding: '1px 8px',
+                    margin: 0,
+                    backgroundColor: '#e6f4ff',
+                    borderColor: '#91caff',
+                    color: '#0958d9',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  <InboxOutlined style={{ fontSize: 12 }} />
+                  <span>PO Sebagian</span>
                 </Tag>
               ) : (
-                <Tag color="default" style={{ borderRadius: 6, fontSize: 11, margin: 0 }}>
+                <Tag
+                  style={{
+                    borderRadius: 6,
+                    fontSize: 11,
+                    padding: '1px 8px',
+                    margin: 0,
+                    backgroundColor: '#fafafa',
+                    borderColor: '#d9d9d9',
+                    color: '#8c8c8c',
+                  }}
+                >
                   Belum Ada PO
                 </Tag>
               )
@@ -461,7 +514,7 @@ export const PrListPage: React.FC = () => {
       },
     },
     {
-      title: 'PO Terkait',
+      title: 'PO terkait', // PO Terkait
       key: 'relatedPos',
       width: 180,
       render: (_: unknown, record: PurchaseRequestRow) => {
@@ -490,12 +543,12 @@ export const PrListPage: React.FC = () => {
                   key={po.id}
                   title={
                     <div>
-                      <div><Text strong style={{ color: '#fff' }}>{po.poNumber}</Text></div>
+                      <div style={{ fontWeight: 600 }}>{po.poNumber}</div>
                       <div>Vendor: {po.vendorName || '-'}</div>
                       {po.grandTotalAmount !== undefined && (
                         <div>Nilai: {formatRupiah(po.grandTotalAmount)}</div>
                       )}
-                      <div style={{ fontSize: 11, color: '#d9d9d9', marginTop: 4 }}>
+                      <div style={{ fontSize: 11, color: '#bfbfbf', marginTop: 4 }}>
                         Klik untuk membuka rincian dokumen PO
                       </div>
                     </div>
@@ -506,20 +559,27 @@ export const PrListPage: React.FC = () => {
                     style={{
                       display: 'inline-flex',
                       flexDirection: 'column',
-                      gap: 2,
-                      padding: '4px 8px',
-                      borderRadius: 6,
-                      backgroundColor: '#f5f5f5',
-                      border: '1px solid #e8e8e8',
                       cursor: 'pointer',
-                      transition: 'all 0.2s',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#0958d9', fontWeight: 600, fontSize: 11 }}>
-                      <FileTextOutlined />
+                    <div
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        padding: '2px 8px',
+                        borderRadius: 6,
+                        backgroundColor: '#f5f5f5',
+                        border: '1px solid #d9d9d9',
+                        fontSize: 11,
+                        color: '#262626',
+                        fontWeight: 500,
+                      }}
+                    >
+                      <FileTextOutlined style={{ color: '#8c8c8c' }} />
                       <span>{po.poNumber}</span>
                     </div>
-                    <span style={{ fontSize: 10, color: '#8c8c8c' }}>{statusLabel}</span>
+                    <span style={{ fontSize: 11, color: '#8c8c8c', marginTop: 2 }}>{statusLabel}</span>
                   </div>
                 </Tooltip>
               );
@@ -529,93 +589,36 @@ export const PrListPage: React.FC = () => {
       },
     },
     {
-      title: 'Aksi',
+      title: '',
       key: 'action',
+      width: 50,
+      align: 'center',
       render: (_: unknown, record: PurchaseRequestRow) => {
-        const isSelfRequester = Boolean(record.requesterId && user?.id && record.requesterId === user.id);
-        const canApprove = (user?.activeRole === 'APPROVER' || user?.activeRole === 'ADMIN') && !isSelfRequester;
-
+        // Quick action context notes:
+        // When opening the PR detail modal, users can perform actions:
+        // - Requester can 'Ajukan'
+        // - Approver can 'Setujui' or 'Tolak'
+        // - AP/Admin can 'Terbitkan PO' / 'Terbitkan Sisa PO' or complete with 'Selesai (PO Terpenuhi)'
         return (
-          <Space size="small">
-            <Tooltip title="Lihat Detail PR">
-              <Button
-                size="small"
-                icon={<EyeOutlined />}
-                onClick={() => {
-                  setSelectedDetailPrId(record.id);
-                  setDetailModalOpen(true);
-                }}
-              >
-                Detail
-              </Button>
-            </Tooltip>
-            {record.status === 'DRAFT' && (user?.activeRole === 'REQUESTER' || user?.activeRole === 'ADMIN') && (
-              <Button
-                type="primary"
-                size="small"
-                icon={<SendOutlined />}
-                loading={submitMutation.isPending}
-                onClick={() => submitMutation.mutate(record.id)}
-              >
-                Ajukan
-              </Button>
-            )}
-            {record.status === 'SUBMITTED' && (
-              <>
-                {isSelfRequester ? (
-                  <Tooltip title="Pelanggaran SoD (R15): Anda adalah pembuat PR ini. Persetujuan harus dilakukan oleh akun Approver lain.">
-                    <Button
-                      type="primary"
-                      size="small"
-                      disabled
-                      icon={<CheckCircleOutlined />}
-                    >
-                      Setujui
-                    </Button>
-                  </Tooltip>
-                ) : (
-                  canApprove && (
-                    <Button
-                      type="primary"
-                      size="small"
-                      icon={<CheckCircleOutlined />}
-                      loading={decideMutation.isPending}
-                      onClick={() => decideMutation.mutate({ id: record.id, decision: 'APPROVED' })}
-                    >
-                      Setujui
-                    </Button>
-                  )
-                )}
-                {canApprove && (
-                  <Button
-                    danger
-                    size="small"
-                    icon={<CloseCircleOutlined />}
-                    onClick={() => {
-                      setSelectedPrId(record.id);
-                      setRejectModalOpen(true);
-                    }}
-                  >
-                    Tolak
-                  </Button>
-                )}
-              </>
-            )}
-            {record.status === 'APPROVED' && (user?.activeRole === 'ACCOUNT_PAYABLE' || user?.activeRole === 'ADMIN') && (
-              (record.remainingQuantity ?? 1) > 0 ? (
-                <Button
-                  type="dashed"
-                  size="small"
-                  icon={<ShoppingCartOutlined />}
-                  onClick={() => navigate(`/po/create?prId=${record.id}`)}
-                >
-                  {record.relatedPos && record.relatedPos.length > 0 ? 'Terbitkan Sisa PO' : 'Terbitkan PO'}
-                </Button>
-              ) : (
-                <Tag color="success">Selesai (PO Terpenuhi)</Tag>
-              )
-            )}
-          </Space>
+          <Tooltip title="Lihat Detail PR">
+            <Button
+              type="text"
+              size="small"
+              icon={<EyeOutlined style={{ fontSize: 16, color: '#595959' }} />}
+              onClick={() => {
+                setSelectedDetailPrId(record.id);
+                setDetailModalOpen(true);
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 32,
+                height: 32,
+                borderRadius: 6,
+              }}
+            />
+          </Tooltip>
         );
       },
     },

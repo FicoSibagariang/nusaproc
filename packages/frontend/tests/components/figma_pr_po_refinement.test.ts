@@ -48,10 +48,33 @@ describe('Figma UI Refinement Phase 3: Core Procurement (PR & PO Lists)', () => 
       expect(content).toContain('Belum Ada PO');
 
       // Related PO chips
-      expect(content).toContain("title: 'PO Terkait'");
+      expect(content).toContain("title: 'PO terkait'");
       expect(content).toContain('PO Selesai Penuh');
       expect(content).toContain('PO Diterbitkan');
       expect(content).toContain('PO Draft');
+    });
+
+    it('verifies PrListPage table strictly matches Figma 02 Purchase Request 8-column layout', () => {
+      const content = readFileSync(prListPath, 'utf-8');
+
+      // Exact 8 column headers matching Figma 02
+      expect(content).toContain("title: 'Nomor PR'");
+      expect(content).toContain("title: 'Pemohon'");
+      expect(content).toContain("title: 'Divisi'");
+      expect(content).toContain("title: 'Termin bayar'");
+      expect(content).toContain("title: 'Estimasi nilai'");
+      expect(content).toContain("title: 'Status'");
+      expect(content).toContain("title: 'PO terkait'");
+
+      // Date is rendered inside Nomor PR cell
+      expect(content).toContain('formatDate(record.createdAt)');
+
+      // Plain text payment term
+      expect(content).toContain('Pay After Receipt');
+
+      // Action column has clean EyeOutlined icon
+      expect(content).toContain('EyeOutlined');
+      expect(content).toContain('setSelectedDetailPrId(record.id)');
     });
   });
 

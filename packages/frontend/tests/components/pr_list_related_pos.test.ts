@@ -11,7 +11,7 @@ describe('PR List Page Related POs Display (Option A)', () => {
     const content = readFileSync(prListPath, 'utf-8');
 
     // Column title and data key
-    expect(content).toContain("title: 'PO Terkait'");
+    expect(content).toContain("title: 'PO terkait'");
     expect(content).toContain("key: 'relatedPos'");
 
     // Related PO tag rendering and status-based colors
