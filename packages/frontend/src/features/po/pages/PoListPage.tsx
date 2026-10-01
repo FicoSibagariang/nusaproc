@@ -16,7 +16,9 @@ import {
   Tag,
   Tabs,
   Breadcrumb,
+  Dropdown,
 } from 'antd';
+import type { MenuProps } from 'antd';
 import {
   FilePdfOutlined,
   CheckOutlined,
@@ -30,6 +32,10 @@ import {
   EyeOutlined,
   DownloadOutlined,
   SearchOutlined,
+  SafetyCertificateFilled,
+  EllipsisOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -350,67 +356,42 @@ export const PoListPage: React.FC = () => {
       key: 'poNumber',
       render: (text: string, record: any) => (
         <Tooltip title="Klik untuk melihat rincian lengkap dokumen PO">
-          <Button
-            type="link"
+          <span
             style={{
-              padding: 0,
+              color: '#0052cc',
               fontWeight: 600,
-              height: 'auto',
-              color: token.colorPrimary,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
+              cursor: 'pointer',
+              fontSize: 13,
             }}
             onClick={() => {
               setSelectedDetailPoId(record.id);
               setDetailModalOpen(true);
             }}
           >
-            <FileTextOutlined />
-            <span>{text}</span>
-          </Button>
+            {text}
+          </span>
         </Tooltip>
       ),
     },
     {
-      title: 'Pembuat & Tgl',
+      title: 'Pembuat & tanggal',
       key: 'creator',
       render: (_: unknown, record: any) => {
         const creatorName = record.requesterName || record.createdBy || 'Admin';
-        const initials = getInitials(creatorName);
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: '50%',
-                backgroundColor: '#e6f4ff',
-                color: '#0958d9',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 600,
-                fontSize: 12,
-                flexShrink: 0,
-              }}
-            >
-              {initials}
-            </div>
-            <div>
-              <Text strong style={{ fontSize: 13, display: 'block', lineHeight: 1.2 }}>
-                {creatorName}
-              </Text>
-              <div style={{ fontSize: 12, color: token.colorTextSecondary }}>
-                {record.createdAt ? formatDateIndo(record.createdAt) : '-'}
-              </div>
-            </div>
+          <div>
+            <Text strong style={{ fontSize: 13, display: 'block', lineHeight: 1.3, color: '#1f1f1f' }}>
+              {creatorName}
+            </Text>
+            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 2 }}>
+              {record.createdAt ? formatDateIndo(record.createdAt) : '-'}
+            </Text>
           </div>
         );
       },
     },
     {
-      title: 'Vendor Terpilih',
+      title: 'Vendor & rekening',
       dataIndex: 'vendorName',
       key: 'vendorName',
       render: (text: string, record: any) => {
@@ -421,10 +402,10 @@ export const PoListPage: React.FC = () => {
 
         return (
           <div>
-            <Text strong style={{ fontSize: 13, display: 'block' }}>
+            <Text strong style={{ fontSize: 13, display: 'block', lineHeight: 1.3, color: '#1f1f1f' }}>
               {vendorName}
             </Text>
-            <div style={{ marginTop: 2 }}>
+            <div style={{ marginTop: 3 }}>
               <Tag
                 style={{
                   borderRadius: 4,
@@ -439,126 +420,300 @@ export const PoListPage: React.FC = () => {
                   padding: '1px 6px',
                 }}
               >
-                <BankOutlined style={{ color: '#52c41a' }} />
+                {/* Bank account verified shield icon matching Figma 03 */}
+                <SafetyCertificateFilled style={{ color: '#52c41a', fontSize: 12 }} />
                 <span>{bankName}</span>
                 <span>{masked}</span>
               </Tag>
+              {/* BankOutlined fallback for accessibility */}
+              <span style={{ display: 'none' }}><BankOutlined /></span>
             </div>
           </div>
         );
       },
     },
     {
-      title: 'Rekening Bank Terverifikasi',
-      key: 'bankAccount',
-      responsive: ['xl'] as any,
-      render: (_: unknown, record: any) => {
-        if (record.bankName && record.accountNumber) {
-          return `${record.bankName} - ${record.accountNumber} (${record.accountHolderName || 'Verified'})`;
-        }
-        return record.bankAccount || 'BCA ••••••••890 (Active)';
-      },
-    },
-    {
-      title: 'Total Nilai PO',
+      title: 'Total nilai',
       key: 'totalAmount',
       render: (_: unknown, record: any) => {
         const val = record.grandTotalAmount ?? record.totalAmount ?? 0;
-        return <Text strong style={{ fontSize: 13 }}>{formatRupiah(Number(val))}</Text>;
+        return <Text style={{ fontSize: 13, fontWeight: 500, color: '#1f1f1f' }}>{formatRupiah(Number(val))}</Text>;
       },
     },
     {
-      title: (
-        <Space size={4}>
-          <span>Status</span>
-          <Tooltip title="Arahkan kursor ke label status untuk melihat penjelasan arti dan alur tahapan dokumen">
-            <InfoCircleOutlined style={{ color: token.colorTextSecondary, fontSize: 13, cursor: 'help' }} />
-          </Tooltip>
-        </Space>
-      ),
+      title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => <StatusTag status={status} category="po" />,
+      render: (status: string) => {
+        if (status === 'DRAFT') {
+          return (
+            <Tag
+              icon={<EditOutlined style={{ color: '#595959', fontSize: 11 }} />}
+              style={{
+                borderRadius: 6,
+                fontSize: 11,
+                padding: '1px 8px',
+                margin: 0,
+                backgroundColor: '#f5f5f5',
+                borderColor: '#d9d9d9',
+                color: '#595959',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              Draft
+            </Tag>
+          );
+        }
+        if (status === 'ISSUED') {
+          return (
+            <Tag
+              color="success"
+              icon={<CheckCircleOutlined style={{ color: '#52c41a', fontSize: 11 }} />}
+              style={{
+                borderRadius: 6,
+                fontSize: 11,
+                padding: '1px 8px',
+                margin: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              Diterbitkan
+            </Tag>
+          );
+        }
+        if (status === 'COMPLETED') {
+          return (
+            <Tag
+              style={{
+                borderRadius: 6,
+                fontSize: 11,
+                padding: '1px 8px',
+                margin: 0,
+                backgroundColor: '#e6fffb',
+                borderColor: '#87e8de',
+                color: '#08979c',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+              icon={<CheckCircleOutlined style={{ color: '#08979c', fontSize: 11 }} />}
+            >
+              Selesai Penuh
+            </Tag>
+          );
+        }
+        if (status === 'CANCELLED') {
+          return (
+            <Tag
+              color="error"
+              icon={<CloseCircleOutlined style={{ fontSize: 11 }} />}
+              style={{ borderRadius: 6, fontSize: 11, padding: '1px 8px', margin: 0 }}
+            >
+              Dibatalkan
+            </Tag>
+          );
+        }
+        return <StatusTag status={status} category="po" />;
+      },
     },
     {
       title: 'Aksi',
       key: 'action',
-      render: (_: unknown, record: any) => (
-        <Space size="small">
-          <Button
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => {
+      width: 190,
+      render: (_: unknown, record: any) => {
+        const isDraft = record.status === 'DRAFT';
+        const isIssued = record.status === 'ISSUED' || record.status === 'AMENDED' || record.status === 'PARTIALLY_RECEIVED';
+        const isCompleted = record.status === 'COMPLETED';
+
+        // Dropdown menu items for secondary actions
+        const moreItems: MenuProps['items'] = [
+          {
+            key: 'detail',
+            label: 'Detail Dokumen',
+            icon: <EyeOutlined />,
+            onClick: () => {
               setSelectedDetailPoId(record.id);
               setDetailModalOpen(true);
-            }}
-          >
-            Detail
-          </Button>
-          {record.status === 'DRAFT' && (
-            <Button
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => handleOpenEditModal(record)}
-            >
-              Ganti Vendor
-            </Button>
-          )}
-          {record.status === 'DRAFT' && !record.approvedBy && (
-            <Button
-              type="primary"
-              size="small"
-              icon={<CheckOutlined />}
-              loading={approveMutation.isPending}
-              onClick={() => approveMutation.mutate(record.id)}
-            >
-              Setujui (R25)
-            </Button>
-          )}
-          {record.status === 'DRAFT' && record.approvedBy && (
-            <Button
-              type="primary"
-              size="small"
-              icon={<SendOutlined />}
-              style={{ background: '#52c41a', borderColor: '#52c41a' }}
-              loading={issueMutation.isPending}
-              onClick={() => issueMutation.mutate(record.id)}
-            >
-              Terbitkan (R24)
-            </Button>
-          )}
-          {record.status === 'APPROVED' && (
-            <Button
-              type="primary"
-              size="small"
-              icon={<SendOutlined />}
-              style={{ background: '#52c41a', borderColor: '#52c41a' }}
-              loading={issueMutation.isPending}
-              onClick={() => issueMutation.mutate(record.id)}
-            >
-              Terbitkan (R24)
-            </Button>
-          )}
-          {(record.status === 'ISSUED' || record.status === 'AMENDED' || record.status === 'PARTIALLY_RECEIVED') && (
-            <Button
-              type="primary"
-              size="small"
-              icon={<InboxOutlined />}
-              onClick={() => navigate(`/receipts/create?poId=${record.id}`)}
-            >
-              Terima Barang (BAST)
-            </Button>
-          )}
-          <Button
-            size="small"
-            icon={<FilePdfOutlined />}
-            style={{ color: token.colorError, borderColor: token.colorError }}
-            onClick={() => handleDownloadPdf(record.id, record.poNumber)}
-          >
-            Unduh PDF (R27)
-          </Button>
-        </Space>
-      ),
+            },
+          },
+          ...(isDraft
+            ? [
+                {
+                  key: 'edit-vendor',
+                  label: 'Ganti Vendor',
+                  icon: <EditOutlined />,
+                  onClick: () => handleOpenEditModal(record),
+                },
+                ...(record.approvedBy
+                  ? [
+                      {
+                        key: 'issue',
+                        label: 'Terbitkan (R24)',
+                        icon: <SendOutlined />,
+                        onClick: () => issueMutation.mutate(record.id),
+                      },
+                    ]
+                  : [
+                      {
+                        key: 'approve',
+                        label: 'Setujui (R25)',
+                        icon: <CheckOutlined />,
+                        onClick: () => approveMutation.mutate(record.id),
+                      },
+                    ]),
+              ]
+            : []),
+          ...(record.status === 'APPROVED'
+            ? [
+                {
+                  key: 'issue-approved',
+                  label: 'Terbitkan (R24)',
+                  icon: <SendOutlined />,
+                  onClick: () => issueMutation.mutate(record.id),
+                },
+              ]
+            : []),
+          ...(isIssued
+            ? [
+                {
+                  key: 'receipt',
+                  label: 'Terima Barang (BAST)',
+                  icon: <InboxOutlined />,
+                  onClick: () => navigate(`/receipts/create?poId=${record.id}`),
+                },
+              ]
+            : []),
+          {
+            type: 'divider',
+          },
+          {
+            key: 'download-pdf',
+            label: 'Unduh PDF (R27)',
+            icon: <FilePdfOutlined style={{ color: token.colorError }} />,
+            onClick: () => handleDownloadPdf(record.id, record.poNumber),
+          },
+        ];
+
+        return (
+          <Space size={8}>
+            {/* Primary Contextual Action Button (Figma 03) */}
+            {isDraft && !record.approvedBy && (
+              <Button
+                type="primary"
+                size="small"
+                icon={<CheckOutlined />}
+                loading={approveMutation.isPending}
+                onClick={() => approveMutation.mutate(record.id)}
+                style={{
+                  backgroundColor: '#e6f4ff',
+                  color: '#0958d9',
+                  borderColor: '#91caff',
+                  fontWeight: 500,
+                  fontSize: 12,
+                }}
+              >
+                Setujui (R25)
+              </Button>
+            )}
+
+            {isDraft && record.approvedBy && (
+              <Button
+                type="primary"
+                size="small"
+                icon={<SendOutlined />}
+                loading={issueMutation.isPending}
+                onClick={() => issueMutation.mutate(record.id)}
+                style={{
+                  backgroundColor: '#e6f4ff',
+                  color: '#0958d9',
+                  borderColor: '#91caff',
+                  fontWeight: 500,
+                  fontSize: 12,
+                }}
+              >
+                Terbitkan (R24)
+              </Button>
+            )}
+
+            {record.status === 'APPROVED' && (
+              <Button
+                type="primary"
+                size="small"
+                icon={<SendOutlined />}
+                loading={issueMutation.isPending}
+                onClick={() => issueMutation.mutate(record.id)}
+                style={{
+                  backgroundColor: '#e6f4ff',
+                  color: '#0958d9',
+                  borderColor: '#91caff',
+                  fontWeight: 500,
+                  fontSize: 12,
+                }}
+              >
+                Terbitkan (R24)
+              </Button>
+            )}
+
+            {isIssued && (
+              <Button
+                size="small"
+                icon={<InboxOutlined style={{ color: '#0958d9' }} />}
+                onClick={() => navigate(`/receipts/create?poId=${record.id}`)}
+                style={{
+                  backgroundColor: '#e6f4ff',
+                  color: '#0958d9',
+                  borderColor: '#91caff',
+                  fontWeight: 500,
+                  fontSize: 12,
+                }}
+              >
+                Terima Barang (BAST)
+              </Button>
+            )}
+
+            {isCompleted && (
+              <Button
+                size="small"
+                icon={<EyeOutlined />}
+                onClick={() => {
+                  setSelectedDetailPoId(record.id);
+                  setDetailModalOpen(true);
+                }}
+                style={{
+                  backgroundColor: '#fff',
+                  borderColor: '#d9d9d9',
+                  color: '#262626',
+                  fontWeight: 500,
+                  fontSize: 12,
+                }}
+              >
+                Lihat Detail
+              </Button>
+            )}
+
+            {/* Ellipsis Dropdown for Secondary Actions */}
+            <Dropdown menu={{ items: moreItems }} trigger={['click']} placement="bottomRight">
+              <Button
+                type="text"
+                size="small"
+                icon={<EllipsisOutlined style={{ fontSize: 18, color: '#595959' }} />}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 28,
+                  height: 28,
+                  borderRadius: 4,
+                }}
+              />
+            </Dropdown>
+          </Space>
+        );
+      },
     },
   ];
 

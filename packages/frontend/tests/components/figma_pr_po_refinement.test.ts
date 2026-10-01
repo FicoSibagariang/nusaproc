@@ -111,5 +111,27 @@ describe('Figma UI Refinement Phase 3: Core Procurement (PR & PO Lists)', () => 
       expect(content).toContain('Terima Barang (BAST)');
       expect(content).toContain('Unduh PDF (R27)');
     });
+
+    it('verifies PoListPage table strictly matches Figma 03 Purchase Order 6-column layout', () => {
+      const content = readFileSync(poListPath, 'utf-8');
+
+      // Exact 6 column headers matching Figma 03
+      expect(content).toContain("title: 'Nomor PO'");
+      expect(content).toContain("title: 'Pembuat & tanggal'");
+      expect(content).toContain("title: 'Vendor & rekening'");
+      expect(content).toContain("title: 'Total nilai'");
+      expect(content).toContain("title: 'Status'");
+      expect(content).toContain("title: 'Aksi'");
+
+      // Redundant column is removed from table
+      expect(content).not.toContain("title: 'Rekening Bank Terverifikasi'");
+
+      // Verified bank tag with SafetyCertificateFilled
+      expect(content).toContain('SafetyCertificateFilled');
+
+      // Dropdown ellipsis action button
+      expect(content).toContain('EllipsisOutlined');
+      expect(content).toContain('Dropdown');
+    });
   });
 });
