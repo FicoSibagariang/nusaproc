@@ -230,7 +230,7 @@ export const PrListPage: React.FC = () => {
       formatDate(pr.createdAt),
       pr.requesterName || '',
       pr.requesterEmail || '',
-      divisionNameMap.get(pr.divisionId) || pr.divisionId,
+      pr.divisionName || divisionNameMap.get(pr.divisionId) || pr.divisionId,
       pr.costCenter || '',
       pr.paymentTermType || 'Pay After Receipt',
       pr.totalEstimatedAmount,
@@ -405,12 +405,14 @@ export const PrListPage: React.FC = () => {
       title: 'Divisi',
       key: 'division',
       render: (_: unknown, record: PurchaseRequestRow) => {
-        const divisionCode = record.divisionId || record.divisionName || '-';
+        const divisionDisplayName = record.divisionName || divisionNameMap.get(record.divisionId) || record.divisionId || '-';
         return (
           <div>
-            <Text strong style={{ fontSize: 13, display: 'block', lineHeight: 1.3, color: '#1f1f1f' }}>
-              {divisionCode}
-            </Text>
+            <Tooltip title={record.divisionId && record.divisionId !== divisionDisplayName ? `Kode Divisi: ${record.divisionId}` : undefined}>
+              <Text strong style={{ fontSize: 13, display: 'block', lineHeight: 1.3, color: '#1f1f1f' }}>
+                {divisionDisplayName}
+              </Text>
+            </Tooltip>
             <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 2 }}>
               {record.costCenter || '-'}
             </Text>
