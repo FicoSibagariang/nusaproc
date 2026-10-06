@@ -39,8 +39,8 @@ describe('Epic Master Data: Branch Offices & Divisions Management (US12, R1, R2)
 
   afterAll(async () => {
     await cleanupTestUsers([adminId, requesterId]);
-    await sql`DELETE FROM master_branch WHERE code LIKE 'BRANCH-TEST-%' OR code LIKE 'BRANCH-BALI-%'`;
-    await sql`DELETE FROM master_division WHERE code LIKE 'DIV-TEST-%' OR code LIKE 'DIV-PROC-%'`;
+    await sql`DELETE FROM master_branch WHERE code LIKE 'BRANCH-TEST-%' OR code LIKE 'BRANCH-BALI-%' OR code LIKE 'BRANCH-TOGGLE-%'`;
+    await sql`DELETE FROM master_division WHERE code LIKE 'DIV-TEST-%' OR code LIKE 'DIV-PROC-%' OR code LIKE 'DIV-SEC-%' OR code LIKE 'DIV-TOGGLE-%'`;
   });
 
   describe('1. Master Branch Office Endpoints', () => {
